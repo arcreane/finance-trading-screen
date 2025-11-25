@@ -109,3 +109,4 @@ void MainWindow::setupUi() {
   mainSplitter->setStretchFactor(0, 3);
   mainSplitter->setStretchFactor(1, 1);
 }
+
