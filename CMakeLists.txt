@@ -17,6 +17,8 @@ set(PROJECT_SOURCES
     main.cpp
     MainWindow.cpp
     MainWindow.h
+    TradingBottomPanel.cpp
+    TradingBottomPanel.h
 )
 
 # Create executable
