@@ -49,6 +49,19 @@ CMakeScripts
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json
+build/
+out/
+
+# Qt deployed DLLs (windeployqt)
+*.dll
+!*.dll.manifest
+iconengines/
+imageformats/
+platforms/
+styles/
+translations/
+tls/
+networkinformation/
 
 # Executables
 *.exe
