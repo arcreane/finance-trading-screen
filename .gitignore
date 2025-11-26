@@ -93,3 +93,16 @@ Desktop.ini
 *.log
 *.swp
 *~
+
+# Custom build scripts
+build.bat
+run.bat
+
+# Generated Makefiles
+Makefile
+Makefile.Debug
+Makefile.Release
+
+# CMake Presets
+CMakePresets.json
+CMakeUserPresets.json
