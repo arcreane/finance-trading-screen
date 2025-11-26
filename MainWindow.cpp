@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "TradingBottomPanel.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFrame>
@@ -76,7 +77,9 @@ void MainWindow::setupUi() {
     QFrame* zone5 = new QFrame();
     zone5->setStyleSheet("background-color: #1e1e1e; border: 1px solid #ffff00;"); // Yellow border
     QVBoxLayout* z5l = new QVBoxLayout(zone5);
-    z5l->addWidget(new QLabel("ZONE 5: OPEN ORDERS / POSITIONS"));
+    // z5l->addWidget(new QLabel("ZONE 5: OPEN ORDERS / POSITIONS"));
+    TradingBottomPanel* bottomPanel = new TradingBottomPanel(zone5);
+    z5l->addWidget(bottomPanel);
     yellowLayout->addWidget(zone5, 1); // Zone 5 takes 25% of Yellow height
 
     mainLayout->addWidget(yellowContainer, 4); // Yellow takes 80% of width
