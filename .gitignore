@@ -94,11 +94,7 @@ Desktop.ini
 *.swp
 *~
 
-# Custom build scripts
-build.bat
-run.bat
-build_app.bat
-run_app.bat
+
 
 # Generated Makefiles
 Makefile

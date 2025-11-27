@@ -1,0 +1,90 @@
+{
+    "bids": [
+        {
+            "price": 91300,
+            "quantity": 190.50000
+        },
+        {
+            "price": 91200,
+            "quantity": 260.10000
+        },
+        {
+            "price": 91100,
+            "quantity": 155.30000
+        },
+        {
+            "price": 91000,
+            "quantity": 130.20000
+        },
+        {
+            "price": 90900,
+            "quantity": 115.40000
+        },
+        {
+            "price": 90800,
+            "quantity": 140.50000
+        },
+        {
+            "price": 90700,
+            "quantity": 165.80000
+        },
+        {
+            "price": 90600,
+            "quantity": 30.20000
+        },
+        {
+            "price": 90500,
+            "quantity": 55.60000
+        },
+        {
+            "price": 90400,
+            "quantity": 80.90000
+        }
+    ],
+    "asks": [
+        {
+            "price": 91400,
+            "quantity": 45.20000
+        },
+        {
+            "price": 91500,
+            "quantity": 265.80000
+        },
+        {
+            "price": 91600,
+            "quantity": 170.30000
+        },
+        {
+            "price": 91700,
+            "quantity": 135.40000
+        },
+        {
+            "price": 91800,
+            "quantity": 105.70000
+        },
+        {
+            "price": 91900,
+            "quantity": 82.10000
+        },
+        {
+            "price": 92000,
+            "quantity": 70.50000
+        },
+        {
+            "price": 92100,
+            "quantity": 158.20000
+        },
+        {
+            "price": 92200,
+            "quantity": 52.40000
+        },
+        {
+            "price": 92300,
+            "quantity": 150.10000
+        },
+        {
+            "price": 92400,
+            "quantity": 75.30000
+        }
+    ]
+}

@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include "TradingBottomPanel.h"
+#include "orderbook.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFrame>
@@ -68,7 +69,9 @@ void MainWindow::setupUi() {
     QFrame* zone3 = new QFrame();
     zone3->setStyleSheet("background-color: #1e1e1e; border: 1px solid #ff00ff;"); // Pink/Magenta border
     QVBoxLayout* z3l = new QVBoxLayout(zone3);
-    z3l->addWidget(new QLabel("ZONE 3: ORDER BOOK"));
+    // z3l->addWidget(new QLabel("ZONE 3: ORDER BOOK"));
+    OrderBook* orderBook = new OrderBook(zone3);
+    z3l->addWidget(orderBook);
     pinkLayout->addWidget(zone3, 1); // Zone 3 takes 25% of Pink width
 
     yellowLayout->addWidget(pinkContainer, 3); // Pink takes 75% of Yellow height

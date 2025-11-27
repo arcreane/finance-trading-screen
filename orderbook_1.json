@@ -1,0 +1,90 @@
+{
+  "bids": [
+    {
+      "price": 91300,
+      "quantity": 180.20513
+    },
+    {
+      "price": 91200,
+      "quantity": 270.88123
+    },
+    {
+      "price": 91100,
+      "quantity": 149.26972
+    },
+    {
+      "price": 91000,
+      "quantity": 126.83821
+    },
+    {
+      "price": 90900,
+      "quantity": 109.17763
+    },
+    {
+      "price": 90800,
+      "quantity": 134.27003
+    },
+    {
+      "price": 90700,
+      "quantity": 159.19905
+    },
+    {
+      "price": 90600,
+      "quantity": 24.64081
+    },
+    {
+      "price": 90500,
+      "quantity": 50.12345
+    },
+    {
+      "price": 90400,
+      "quantity": 75.67890
+    }
+  ],
+  "asks": [
+    {
+      "price": 91400,
+      "quantity": 40.69681
+    },
+    {
+      "price": 91500,
+      "quantity": 273.40125
+    },
+    {
+      "price": 91600,
+      "quantity": 166.70063
+    },
+    {
+      "price": 91700,
+      "quantity": 140.66063
+    },
+    {
+      "price": 91800,
+      "quantity": 100.64010
+    },
+    {
+      "price": 91900,
+      "quantity": 78.45348
+    },
+    {
+      "price": 92000,
+      "quantity": 74.45669
+    },
+    {
+      "price": 92100,
+      "quantity": 162.94619
+    },
+    {
+      "price": 92200,
+      "quantity": 49.53433
+    },
+    {
+      "price": 92300,
+      "quantity": 154.58822
+    },
+    {
+      "price": 92400,
+      "quantity": 71.41294
+    }
+  ]
+}
