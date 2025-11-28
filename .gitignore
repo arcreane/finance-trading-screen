@@ -1,0 +1,111 @@
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.wsuo
+slnx.sqlite
+
+# Visual Studio Code files
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+build/
+build*/
+*.exe
+*.out
+*.app
+*.dll
+*.dylib
+*.so
+
+# Qt specific
+*.pro.user
+*.pro.user.*
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qm
+.qmake.stash
+*.qmlc
+*.jsc
+Makefile*
+*_autogen/
+
+# IntelliSense and code analysis cache
+CodeChunks.db*
+SemanticSymbols.db*
+*.VC.db
+*.VC.VC.opendb
+
+# CMake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+*.cmake
+!Qt6Config.cmake
+!qt6-config.cmake
+!Find*.cmake
+
+# Object files
+*.o
+*.obj
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+backtest.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.manifest
+*.spec
+
+# OS specific
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.swp
+*~
+*.bak
