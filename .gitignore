@@ -54,6 +54,8 @@ compile_commands.json
 *.exe
 *.out
 *.app
+*.bat
+
 
 # Object files
 *.o
