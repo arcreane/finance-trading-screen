@@ -67,6 +67,7 @@ networkinformation/
 *.exe
 *.out
 *.app
+*.bat
 
 # Object files
 *.o
