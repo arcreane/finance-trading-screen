@@ -1,11 +1,13 @@
 #include "MainWindow.h"
+#include "TradingBottomPanel.h"
+#include "orderbook.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QSplitter>
 #include <QFrame>
 #include <QLabel>
+#include <QWidget>
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent) {
     setupUi();
 }
@@ -15,116 +17,84 @@ MainWindow::~MainWindow() {
 
 void MainWindow::setupUi() {
     // Central widget to hold everything
-    QWidget *centralWidget = new QWidget(this);
+    QWidget* centralWidget = new QWidget(this);
     setCentralWidget(centralWidget);
+    centralWidget->setStyleSheet("background-color: #121212; color: #ffffff;");
 
-    // Main Vertical Layout (Top Bars + Workspace)
-    QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
+    // 1. MAIN LAYOUT (RED BOX in sketch) - Horizontal Split
+    // Left Part (Yellow) vs Right Part (Zone 4)
+    QHBoxLayout* mainLayout = new QHBoxLayout(centralWidget);
     mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(2);
+    mainLayout->setSpacing(1);
 
-    // 1. Top Menu Bar Placeholder
-    QFrame *topMenuBar = new QFrame();
-    topMenuBar->setFixedHeight(40);
-    QHBoxLayout *menuLayout = new QHBoxLayout(topMenuBar);
-    menuLayout->addWidget(new QLabel("MENU | NEW | TOOLS | WORKSPACES | CONNECTIONS API | HELP"));
-    mainLayout->addWidget(topMenuBar);
+    // --- LEFT CONTAINER (YELLOW BOX) ---
+    // Vertical Split: Top (Pink) vs Bottom (Zone 5)
+    QWidget* yellowContainer = new QWidget();
+    QVBoxLayout* yellowLayout = new QVBoxLayout(yellowContainer);
+    yellowLayout->setContentsMargins(0, 0, 0, 0);
+    yellowLayout->setSpacing(1);
 
-    // 2. Secondary Toolbar / Ticker Placeholder
-    QFrame *tickerBar = new QFrame();
-    tickerBar->setFixedHeight(50);
-    QHBoxLayout *tickerLayout = new QHBoxLayout(tickerBar);
-    tickerLayout->addWidget(new QLabel("ETH/USDT | DAILY | INDICATORS | Bloomberg News Ticker..."));
-    mainLayout->addWidget(tickerBar);
+    // --- TOP CONTAINER (PINK BOX) ---
+    // Horizontal Split: Left (Green) vs Right (Zone 3)
+    QWidget* pinkContainer = new QWidget();
+    QHBoxLayout* pinkLayout = new QHBoxLayout(pinkContainer);
+    pinkLayout->setContentsMargins(0, 0, 0, 0);
+    pinkLayout->setSpacing(1);
 
-    // 3. Main Workspace Area (Horizontal Splitter)
-    QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
-    mainLayout->addWidget(mainSplitter);
+    // --- TOP LEFT CONTAINER (GREEN BOX) ---
+    // Vertical Split: Top (Zone 1) vs Bottom (Zone 2)
+    QWidget* greenContainer = new QWidget();
+    QVBoxLayout* greenLayout = new QVBoxLayout(greenContainer);
+    greenLayout->setContentsMargins(0, 0, 0, 0);
+    greenLayout->setSpacing(1);
 
-    // --- LEFT COLUMN (Charts & Order Entry) ---
-    QSplitter *leftSplitter = new QSplitter(Qt::Vertical);
-    mainSplitter->addWidget(leftSplitter);
+    // ZONE 1: Pair Info (Top of Green)
+    QFrame* zone1 = new QFrame();
+    zone1->setFixedHeight(50); // Fixed height for header
+    zone1->setStyleSheet("background-color: #1e1e1e; border: 1px solid #00ff00;"); // Green border
+    QVBoxLayout* z1l = new QVBoxLayout(zone1);
+    z1l->addWidget(new QLabel("ZONE 1: PAIR INFO"));
+    greenLayout->addWidget(zone1);
 
-    // Chart Area
-    QFrame *chartFrame = new QFrame();
-    chartFrame->setMinimumHeight(200);
-    QVBoxLayout *chartLayout = new QVBoxLayout(chartFrame);
-    chartLayout->addWidget(new QLabel("MAIN CHART AREA (Candlesticks)"));
-    leftSplitter->addWidget(chartFrame);
+    // ZONE 2: Chart (Bottom of Green)
+    QFrame* zone2 = new QFrame();
+    zone2->setStyleSheet("background-color: #1e1e1e; border: 1px solid #00ff00;"); // Green border
+    QVBoxLayout* z2l = new QVBoxLayout(zone2);
+    z2l->addWidget(new QLabel("ZONE 2: CHART"));
+    greenLayout->addWidget(zone2, 1); // Expands to fill Green
 
-    // Indicator Area
-    QFrame *indicatorFrame = new QFrame();
-    indicatorFrame->setMinimumHeight(100);
-    QVBoxLayout *indicatorLayout = new QVBoxLayout(indicatorFrame);
-    indicatorLayout->addWidget(new QLabel("INDICATOR AREA (RSI, MACD, etc.)"));
-    leftSplitter->addWidget(indicatorFrame);
+    pinkLayout->addWidget(greenContainer, 3); // Green takes 75% of Pink width
 
-    // Bottom Panel (Order Entry & Trade Table)
-    QFrame *bottomPanel = new QFrame();
-    bottomPanel->setMaximumHeight(150);
-    QHBoxLayout *bottomLayout = new QHBoxLayout(bottomPanel);
-    
-    QFrame *orderEntryBlock = new QFrame(); // "BUY / AMOUNT / PNL"
-    QVBoxLayout *ol = new QVBoxLayout(orderEntryBlock);
-    ol->addWidget(new QLabel("ORDER ENTRY CONTROLS"));
-    
-    QFrame *tradeTableBlock = new QFrame(); // "Side PRICE TYPE..."
-    QVBoxLayout *tl = new QVBoxLayout(tradeTableBlock);
-    tl->addWidget(new QLabel("OPEN ORDERS / TRADES"));
+    // ZONE 3: Order Book (Right of Pink)
+    QFrame* zone3 = new QFrame();
+    zone3->setStyleSheet("background-color: #1e1e1e; border: 1px solid #ff00ff;"); // Pink/Magenta border
+    QVBoxLayout* z3l = new QVBoxLayout(zone3);
+    // z3l->addWidget(new QLabel("ZONE 3: ORDER BOOK"));
+    OrderBook* orderBook = new OrderBook(zone3);
+    z3l->addWidget(orderBook);
+    pinkLayout->addWidget(zone3, 1); // Zone 3 takes 25% of Pink width
 
-    QFrame *consoleBlock = new QFrame(); // "Console > ..."
-    QVBoxLayout *cl = new QVBoxLayout(consoleBlock);
-    cl->addWidget(new QLabel("CONSOLE OUTPUT"));
+    yellowLayout->addWidget(pinkContainer, 3); // Pink takes 75% of Yellow height
 
-    bottomLayout->addWidget(orderEntryBlock, 1);
-    bottomLayout->addWidget(tradeTableBlock, 2);
-    bottomLayout->addWidget(consoleBlock, 2);
-    
-    leftSplitter->addWidget(bottomPanel);
-    
-    // Set stretch factors for left column (Chart gets most space)
-    leftSplitter->setStretchFactor(0, 3);
-    leftSplitter->setStretchFactor(1, 1);
-    leftSplitter->setStretchFactor(2, 0);
+    // ZONE 5: Open Orders (Bottom of Yellow)
+    QFrame* zone5 = new QFrame();
+    zone5->setStyleSheet("background-color: #1e1e1e; border: 1px solid #ffff00;"); // Yellow border
+    QVBoxLayout* z5l = new QVBoxLayout(zone5);
+    // z5l->addWidget(new QLabel("ZONE 5: OPEN ORDERS / POSITIONS"));
+    TradingBottomPanel* bottomPanel = new TradingBottomPanel(zone5);
+    z5l->addWidget(bottomPanel);
+    yellowLayout->addWidget(zone5, 1); // Zone 5 takes 25% of Yellow height
 
+    mainLayout->addWidget(yellowContainer, 4); // Yellow takes 80% of width
 
-    // --- RIGHT COLUMN (Order Book, Watchlist, Depth) ---
-    QSplitter *rightSplitter = new QSplitter(Qt::Vertical);
-    mainSplitter->addWidget(rightSplitter);
+    // --- RIGHT CONTAINER (ZONE 4) ---
+    // Order Entry
+    QFrame* zone4 = new QFrame();
+    zone4->setFixedWidth(300); // Fixed width or weight
+    zone4->setStyleSheet("background-color: #1e1e1e; border: 1px solid #0000ff;"); // Blue border
+    QVBoxLayout* z4l = new QVBoxLayout(zone4);
+    z4l->addWidget(new QLabel("ZONE 4: ORDER ENTRY"));
 
-    // Top Right Section: Split horizontally for Order Book & Watchlist
-    QSplitter *topRightSplitter = new QSplitter(Qt::Horizontal);
-    
-    QFrame *orderBookFrame = new QFrame();
-    QVBoxLayout *obl = new QVBoxLayout(orderBookFrame);
-    obl->addWidget(new QLabel("ORDER BOOK\n(Bids/Asks)"));
-    
-    QFrame *watchlistFrame = new QFrame();
-    QVBoxLayout *wll = new QVBoxLayout(watchlistFrame);
-    wll->addWidget(new QLabel("WATCHLIST"));
-
-    topRightSplitter->addWidget(orderBookFrame);
-    topRightSplitter->addWidget(watchlistFrame);
-    rightSplitter->addWidget(topRightSplitter);
-
-    // Middle Right Section: Depth / Details
-    QFrame *depthFrame = new QFrame();
-    QVBoxLayout *dl = new QVBoxLayout(depthFrame);
-    dl->addWidget(new QLabel("MARKET DEPTH / DETAILS"));
-    rightSplitter->addWidget(depthFrame);
-
-    // Bottom Right Section: Trading Actions
-    QFrame *actionFrame = new QFrame();
-    QVBoxLayout *al = new QVBoxLayout(actionFrame);
-    al->addWidget(new QLabel("TRADING ACTIONS\n(Limit/Market/Buy/Sell Buttons)"));
-    rightSplitter->addWidget(actionFrame);
-
-    // Set stretch factors for right column
-    rightSplitter->setStretchFactor(0, 2);
-    rightSplitter->setStretchFactor(1, 2);
-    rightSplitter->setStretchFactor(2, 1);
-
-    // Set main splitter stretch (Left column wider)
-    mainSplitter->setStretchFactor(0, 3);
-    mainSplitter->setStretchFactor(1, 1);
+    mainLayout->addWidget(zone4, 0); // Fixed width, so stretch 0 or 1 doesn't matter much if fixed width is set, but let's rely on fixed width.
 }
+
