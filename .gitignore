@@ -89,3 +89,8 @@ Desktop.ini
 orderbook_*.json
 *.bat
 finance-trading-screen.pro
+
+Makefile
+Makefile.Debug
+Makefile.Release
+
