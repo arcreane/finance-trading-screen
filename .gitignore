@@ -84,3 +84,8 @@ Desktop.ini
 *.log
 *.swp
 *~
+
+# Orderbook data
+orderbook_*.json
+*.bat
+finance-trading-screen.pro
