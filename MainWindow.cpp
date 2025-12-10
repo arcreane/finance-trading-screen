@@ -1,6 +1,6 @@
 #include "MainWindow.h"
-#include "TradingBottomPanel.h"
-#include "orderbook.h"
+#include "TickerPlaceholder.h"
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFrame>
@@ -34,12 +34,9 @@ void MainWindow::setupUi() {
     yellowLayout->setContentsMargins(0, 0, 0, 0);
     yellowLayout->setSpacing(1);
 
-    // --- TOP CONTAINER (PINK BOX) ---
-    // Horizontal Split: Left (Green) vs Right (Zone 3)
-    QWidget* pinkContainer = new QWidget();
-    QHBoxLayout* pinkLayout = new QHBoxLayout(pinkContainer);
-    pinkLayout->setContentsMargins(0, 0, 0, 0);
-    pinkLayout->setSpacing(1);
+    // 2. Secondary Toolbar / Ticker Placeholder
+    TickerPlaceholder *tickerWidget = new TickerPlaceholder(this);
+    mainLayout->addWidget(tickerWidget);
 
     // --- TOP LEFT CONTAINER (GREEN BOX) ---
     // Vertical Split: Top (Zone 1) vs Bottom (Zone 2)
