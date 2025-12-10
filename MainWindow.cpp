@@ -1,4 +1,6 @@
 #include "MainWindow.h"
+#include "TickerPlaceholder.h"
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QSplitter>
@@ -31,11 +33,8 @@ void MainWindow::setupUi() {
     mainLayout->addWidget(topMenuBar);
 
     // 2. Secondary Toolbar / Ticker Placeholder
-    QFrame *tickerBar = new QFrame();
-    tickerBar->setFixedHeight(50);
-    QHBoxLayout *tickerLayout = new QHBoxLayout(tickerBar);
-    tickerLayout->addWidget(new QLabel("ETH/USDT | DAILY | INDICATORS | Bloomberg News Ticker..."));
-    mainLayout->addWidget(tickerBar);
+    TickerPlaceholder *tickerWidget = new TickerPlaceholder(this);
+    mainLayout->addWidget(tickerWidget);
 
     // 3. Main Workspace Area (Horizontal Splitter)
     QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
