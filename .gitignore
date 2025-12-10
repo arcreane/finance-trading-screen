@@ -80,3 +80,8 @@ Desktop.ini
 *.log
 *.swp
 *~
+
+#makefiles
+Makefile
+Makefile.Debug
+Makefile.Release
