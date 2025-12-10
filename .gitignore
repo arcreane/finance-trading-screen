@@ -105,3 +105,11 @@ Makefile.Release
 # CMake Presets
 CMakePresets.json
 CMakeUserPresets.json
+
+# Orderbook data
+orderbook_*.json
+*.bat
+finance-trading-screen.pro
+
+
+
