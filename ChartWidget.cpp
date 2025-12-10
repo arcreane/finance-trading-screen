@@ -16,12 +16,23 @@ ChartWidget::~ChartWidget() {}
 void ChartWidget::setupChart() {
   chart = new QChart();
   chart->setTitle("BTC Daily Chart");
-  chart->setTheme(QChart::ChartThemeDark);
-  chart->legend()->setVisible(true);
-  chart->legend()->setAlignment(Qt::AlignBottom);
+  // Remove built-in theme to allow custom colors
+  // chart->setTheme(QChart::ChartThemeDark); 
+  
+  // Background Colors
+  chart->setBackgroundBrush(QBrush(QColor("#131722")));
+  chart->setPlotAreaBackgroundBrush(QBrush(QColor("#131722")));
+  chart->setPlotAreaBackgroundVisible(true);
+  
+  // Title Color
+  chart->setTitleBrush(QBrush(QColor("#d1d4dc")));
+
+  chart->legend()->setVisible(false); // Hide legend for cleaner look like screenshot
+  // chart->legend()->setAlignment(Qt::AlignBottom);
 
   chartView = new QChartView(chart);
   chartView->setRenderHint(QPainter::Antialiasing);
+  chartView->setBackgroundBrush(QBrush(QColor("#131722"))); // Widget background
 
   QVBoxLayout *layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
@@ -29,21 +40,35 @@ void ChartWidget::setupChart() {
 
   series = new QCandlestickSeries();
   series->setName("BTC");
-  series->setIncreasingColor(QColor(Qt::green));
-  series->setDecreasingColor(QColor(Qt::red));
+  // TradingView Colors
+  series->setIncreasingColor(QColor("#089981")); // Teal
+  series->setDecreasingColor(QColor("#f23645")); // Red
   series->setBodyOutlineVisible(false);
 
   chart->addSeries(series);
 
+  // Axis Styling
+  auto axisFont = QFont("Segoe UI", 9);
+  QColor gridColor("#2a2e39");
+  QColor labelColor("#b2b5be");
+
   axisX = new QDateTimeAxis();
-  axisX->setFormat("dd-MM-yyyy");
+  axisX->setFormat("dd-MM");
   axisX->setTitleText("Date");
+  axisX->setLabelsColor(labelColor);
+  axisX->setLabelsFont(axisFont);
+  axisX->setGridLineColor(gridColor);
+  axisX->setLineVisible(false); // Hide axis line itself
   chart->addAxis(axisX, Qt::AlignBottom);
   series->attachAxis(axisX);
 
   axisY = new QValueAxis();
   axisY->setTitleText("Price");
-  chart->addAxis(axisY, Qt::AlignLeft);
+  axisY->setLabelsColor(labelColor);
+  axisY->setLabelsFont(axisFont);
+  axisY->setGridLineColor(gridColor);
+  axisY->setLineVisible(false);
+  chart->addAxis(axisY, Qt::AlignRight); // Right side like TradingView
   series->attachAxis(axisY);
 }
 
