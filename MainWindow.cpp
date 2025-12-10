@@ -5,6 +5,8 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QComboBox>
+#include <QPushButton>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) { setupUi(); }
 
@@ -48,13 +50,43 @@ void MainWindow::setupUi() {
   zone1->setFixedHeight(50); // Fixed height for header
   zone1->setStyleSheet(
       "background-color: #1e1e1e; border: 1px solid #00ff00;"); // Green border
-  QVBoxLayout *z1l = new QVBoxLayout(zone1);
-  z1l->addWidget(new QLabel("ZONE 1: PAIR INFO"));
+  
+  QHBoxLayout *z1l = new QHBoxLayout(zone1);
+  z1l->setContentsMargins(10, 0, 10, 0);
+  
+  QLabel *tickerLabel = new QLabel("Ticker:");
+  tickerLabel->setStyleSheet("color: #d1d4dc; border: none;");
+  QComboBox *tickerCombo = new QComboBox();
+  tickerCombo->addItems({"BTC", "ETH", "SOL"});
+  tickerCombo->setStyleSheet("background-color: #2a2e39; color: white; border: none; padding: 5px;");
+  
+  QLabel *tfLabel = new QLabel("Timeframe:");
+  tfLabel->setStyleSheet("color: #d1d4dc; border: none;");
+  QComboBox *tfCombo = new QComboBox();
+  tfCombo->addItems({"Daily", "4h", "1h", "15m"});
+  tfCombo->setStyleSheet("background-color: #2a2e39; color: white; border: none; padding: 5px;");
+
+  QPushButton *loadBtn = new QPushButton("Load");
+  loadBtn->setStyleSheet("background-color: #2962ff; color: white; border: none; padding: 5px 15px; font-weight: bold;");
+  
+  z1l->addWidget(tickerLabel);
+  z1l->addWidget(tickerCombo);
+  z1l->addSpacing(20);
+  z1l->addWidget(tfLabel);
+  z1l->addWidget(tfCombo);
+  z1l->addStretch();
+  z1l->addWidget(loadBtn);
+  
   greenLayout->addWidget(zone1);
 
   // ZONE 2: Chart (Bottom of Green)
   ChartWidget *chartWidget = new ChartWidget();
   greenLayout->addWidget(chartWidget, 1);
+  
+  // Connect Load Button
+  connect(loadBtn, &QPushButton::clicked, [=]() {
+      chartWidget->loadData(tickerCombo->currentText(), tfCombo->currentText());
+  });
 
   pinkLayout->addWidget(greenContainer, 3); // Green takes 75% of Pink width
 

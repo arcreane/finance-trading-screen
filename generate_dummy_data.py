@@ -15,6 +15,7 @@ def create_table(cursor):
             High REAL,
             Low REAL,
             Close REAL,
+            Volume REAL,
             UNIQUE(Symbol, Timestamp)
         )
     ''')
@@ -47,11 +48,14 @@ def generate_data():
         high_price = max(open_price, close_price) * (1 + random.uniform(0, 0.02))
         low_price = min(open_price, close_price) * (1 - random.uniform(0, 0.02))
         
+        # Random Volume
+        volume = random.uniform(1000, 5000)
+
         try:
             cursor.execute('''
-                INSERT OR REPLACE INTO StockData (Symbol, Timestamp, Open, High, Low, Close)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (SYMBOL, timestamp, open_price, high_price, low_price, close_price))
+                INSERT OR REPLACE INTO StockData (Symbol, Timestamp, Open, High, Low, Close, Volume)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (SYMBOL, timestamp, open_price, high_price, low_price, close_price, volume))
             count += 1
         except sqlite3.Error as e:
             print(f"Database error: {e}")

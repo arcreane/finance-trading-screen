@@ -21,6 +21,7 @@ def create_table(cursor):
             High REAL,
             Low REAL,
             Close REAL,
+            Volume REAL,
             UNIQUE(Symbol, Timestamp)
         )
     ''')
@@ -67,12 +68,13 @@ def populate_db(data):
         high_price = float(values["2a. high (USD)"])
         low_price = float(values["3a. low (USD)"])
         close_price = float(values["4a. close (USD)"])
+        volume = float(values["5. volume"])
         
         try:
             cursor.execute('''
-                INSERT OR REPLACE INTO StockData (Symbol, Timestamp, Open, High, Low, Close)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (SYMBOL, timestamp, open_price, high_price, low_price, close_price))
+                INSERT OR REPLACE INTO StockData (Symbol, Timestamp, Open, High, Low, Close, Volume)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (SYMBOL, timestamp, open_price, high_price, low_price, close_price, volume))
             count += 1
         except sqlite3.Error as e:
             print(f"Database error: {e}")
