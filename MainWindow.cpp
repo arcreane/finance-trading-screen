@@ -66,6 +66,9 @@ void MainWindow::setupUi() {
     z2l->addWidget(new QLabel("ZONE 2: CHART"));
     greenLayout->addWidget(zone2, 1); // Expands to fill remaining Green space
 
+    ChartWidget *chartWidget = new ChartWidget();
+    greenLayout->addWidget(chartWidget, 1);
+
     // Container PINK
     QWidget* pinkContainer = new QWidget();
     // Note: Si vous voulez que le Carnet d'ordre (Zone 3) soit à DROITE du graphique,
