@@ -64,10 +64,11 @@ void MainWindow::setupUi() {
     zone2->setStyleSheet("background-color: #1e1e1e; border: 1px solid #00ff00;");
     QVBoxLayout* z2l = new QVBoxLayout(zone2);
     z2l->addWidget(new QLabel("ZONE 2: CHART"));
-    greenLayout->addWidget(zone2, 1); // Expands to fill remaining Green space
-
+    
     ChartWidget *chartWidget = new ChartWidget();
-    greenLayout->addWidget(chartWidget, 1);
+    z2l->addWidget(chartWidget);
+
+    greenLayout->addWidget(zone2, 1); // Expands to fill remaining Green space
 
     // Container PINK
     QWidget* pinkContainer = new QWidget();
