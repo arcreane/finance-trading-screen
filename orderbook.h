@@ -8,7 +8,7 @@
 #include <QStyledItemDelegate>
 #include <QPainter>
 #include <vector>
-#include <nlohmann/json.hpp>
+#include "nlohmann/json.hpp"
 
 // Delegate for drawing depth bars
 class DepthDelegate : public QStyledItemDelegate {

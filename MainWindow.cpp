@@ -2,6 +2,7 @@
 #include "TickerPlaceholder.h"
 #include "orderbook.h"
 #include "TradingBottomPanel.h"
+#include "ChartWidget.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -45,12 +46,12 @@ void MainWindow::setupUi() {
     greenLayout->setSpacing(1);
 
     // ZONE 1: Pair Info (Top of Green)
-    QFrame* zone1 = new QFrame();
-    zone1->setFixedHeight(50);
-    zone1->setStyleSheet("background-color: #1e1e1e; border: 1px solid #00ff00;");
-    QVBoxLayout* z1l = new QVBoxLayout(zone1);
-    z1l->addWidget(new QLabel("ZONE 1: PAIR INFO"));
-    greenLayout->addWidget(zone1);
+    // QFrame* zone1 = new QFrame();
+    // zone1->setFixedHeight(50);
+    // zone1->setStyleSheet("background-color: #1e1e1e; border: 1px solid #00ff00;");
+    // QVBoxLayout* z1l = new QVBoxLayout(zone1);
+    // z1l->addWidget(new QLabel("ZONE 1: PAIR INFO"));
+    // greenLayout->addWidget(zone1);
 
     // --- CHANGEMENT : AJOUT DU TICKER ICI (ENTRE ZONE 1 et ZONE 2) ---
     TickerPlaceholder *tickerWidget = new TickerPlaceholder(this);
