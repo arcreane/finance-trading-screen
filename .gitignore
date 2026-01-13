@@ -177,6 +177,9 @@ Desktop.ini
 *.swp
 *~
 
+# Database
+*.db
+
 #makefiles
 Makefile
 Makefile.Debug
