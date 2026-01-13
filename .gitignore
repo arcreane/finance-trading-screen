@@ -87,6 +87,7 @@ Desktop.ini
 
 # Orderbook data
 orderbook_*.json
+
 *.bat
 finance-trading-screen.pro
 
@@ -177,9 +178,11 @@ Desktop.ini
 *.swp
 *~
 
+# Database
+*.db
+
 #makefiles
 Makefile
 Makefile.Debug
 Makefile.Release
-
 CMakeLists.txt
