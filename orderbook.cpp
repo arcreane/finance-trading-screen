@@ -38,24 +38,27 @@ void OrderBook::setupUi() {
     headerLayout->setSpacing(0);
     
     QLabel* lblPrice = new QLabel("Price", this);
-    QLabel* lblSize = new QLabel("Size (BTC)", this);
-    QLabel* lblTotal = new QLabel("Total (BTC)", this);
+    QLabel* lblSize = new QLabel("Amount", this);
+    QLabel* lblTotal = new QLabel("Total", this);
     
     QString headerStyle = "color: #888; font-size: 9pt; font-weight: bold;";
     lblPrice->setStyleSheet(headerStyle);
     lblSize->setStyleSheet(headerStyle);
     lblTotal->setStyleSheet(headerStyle);
     
-    lblPrice->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // Screenshot has Price left aligned? No, usually right or left. Let's keep consistent. Screenshot looks like Price is Left aligned? Or Right? Actually numbers are usually right aligned.
+    lblPrice->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     // Screenshot: "Price" label is left, numbers are right? Let's check screenshot again... I can't.
     // Standard: Numbers right aligned. Labels usually match.
     // Let's use Stretch for spacing.
     
-    headerLayout->addWidget(lblPrice, 1);
+    headerLayout->addWidget(lblPrice, 1, Qt::AlignRight);
     headerLayout->addWidget(lblSize, 1, Qt::AlignRight);
     headerLayout->addWidget(lblTotal, 1, Qt::AlignRight);
     
     mainLayout->addWidget(headerWidget);
+
+    // Spacer to push Asks down (so they align to bottom of this section, near Spread)
+    mainLayout->addStretch(1);
 
     // Asks Table (Top)
     asksTable = new QTableWidget(this);
@@ -68,7 +71,8 @@ void OrderBook::setupUi() {
     asksTable->setStyleSheet("background-color: #161616; border: none;");
     asksTable->setItemDelegate(new DepthDelegate(asksTable));
     asksTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    mainLayout->addWidget(asksTable, 1);
+    asksTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // Fixed height to content
+    mainLayout->addWidget(asksTable, 0); // No stretch for table itself
 
     // Spread Label (Middle)
     spreadLabel = new QLabel(this);
@@ -165,7 +169,11 @@ void OrderBook::loadData(const std::string& filename) {
             
             double spread = bestAsk - bestBid;
             double percentage = (spread / bestAsk) * 100.0;
-            spreadLabel->setText(QString("Spread %1  %2%").arg(formatNumber(spread, 1)).arg(formatNumber(percentage, 3)));
+            double fairPrice = (bestAsk + bestBid) / 2.0;
+            spreadLabel->setText(QString("%1  %2%       Fair %3")
+                                 .arg(formatNumber(spread, 1))
+                                 .arg(formatNumber(percentage, 3))
+                                 .arg(formatNumber(fairPrice, 1)));
         }
 
     } catch (const std::exception& e) {
@@ -241,6 +249,17 @@ void OrderBook::populateTable(QTableWidget* table, const std::vector<nlohmann::j
         table->setItem(row, 2, totalItem);
         
         row++;
+    }
+
+    // Resize table height to fit content (if it's the Asks table or we want tight layout)
+    // Especially important for Asks table to let the spacer above it work.
+    if (table->rowCount() > 0) {
+        int height = 0;
+        for (int i=0; i<table->rowCount(); ++i) height += table->rowHeight(i);
+        // Add a bit for margins if needed, or rely on precise calc
+        table->setFixedHeight(height);
+    } else {
+        table->setFixedHeight(0);
     }
 }
 

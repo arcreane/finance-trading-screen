@@ -130,7 +130,7 @@ TickerPlaceholder::TickerPlaceholder(QWidget *parent) : QWidget(parent) {
 
 void TickerPlaceholder::setupUI() {
     this->setFixedHeight(60);
-    this->setStyleSheet("background-color: #131722; border-bottom: 1px solid #2a2e39;");
+    this->setStyleSheet("background-color: #161616; border-bottom: 1px solid #2a2e39;");
 
     QHBoxLayout *mainLayout = new QHBoxLayout(this);
     mainLayout->setContentsMargins(15, 0, 15, 0);

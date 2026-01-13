@@ -1,0 +1,46 @@
+{
+    "asks": [
+        {
+            "price": 95150,
+            "quantity": 0.2
+        },
+        {
+            "price": 95100,
+            "quantity": 1.0
+        },
+        {
+            "price": 95050,
+            "quantity": 0.5
+        },
+        {
+            "price": 95000,
+            "quantity": 1.5
+        },
+        {
+            "price": 94950,
+            "quantity": 0.8
+        }
+    ],
+    "bids": [
+        {
+            "price": 94850,
+            "quantity": 1.2
+        },
+        {
+            "price": 94800,
+            "quantity": 1.8
+        },
+        {
+            "price": 94750,
+            "quantity": 0.7
+        },
+        {
+            "price": 94700,
+            "quantity": 1.1
+        },
+        {
+            "price": 94650,
+            "quantity": 2.5
+        }
+    ]
+}

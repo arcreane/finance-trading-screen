@@ -60,7 +60,7 @@ void MainWindow::setupUi() {
 
   // ZONE 2: Chart (Bottom of Green)
   QFrame *zone2 = new QFrame();
-  zone2->setStyleSheet("background-color: #1e1e1e;");
+  zone2->setStyleSheet("background-color: #161616;");
   QVBoxLayout *z2l = new QVBoxLayout(zone2);
 
   ChartWidget *chartWidget = new ChartWidget();
@@ -81,7 +81,7 @@ void MainWindow::setupUi() {
 
   // ZONE 3: Order Book
   QFrame *zone3 = new QFrame();
-  zone3->setStyleSheet("background-color: #1e1e1e;");
+  zone3->setStyleSheet("background-color: #161616;");
   QVBoxLayout *z3l = new QVBoxLayout(zone3);
   OrderBook *orderBook = new OrderBook(zone3);
   z3l->addWidget(orderBook);
@@ -91,7 +91,7 @@ void MainWindow::setupUi() {
 
   // ZONE 5: Open Orders
   QFrame *zone5 = new QFrame();
-  zone5->setStyleSheet("background-color: #1e1e1e;");
+  zone5->setStyleSheet("background-color: #161616;");
   QVBoxLayout *z5l = new QVBoxLayout(zone5);
   TradingBottomPanel *bottomPanel = new TradingBottomPanel(zone5);
   z5l->addWidget(bottomPanel);
@@ -102,8 +102,8 @@ void MainWindow::setupUi() {
 
   // --- RIGHT CONTAINER (ZONE 4) ---
   QFrame *zone4 = new QFrame();
-  zone4->setFixedWidth(300);
-  zone4->setStyleSheet("background-color: #1e1e1e;");
+  zone4->setFixedWidth(240);
+  zone4->setStyleSheet("background-color: #161616;");
   QVBoxLayout *z4l = new QVBoxLayout(zone4);
   z4l->addWidget(new QLabel("ZONE 4: ORDER ENTRY"));
 

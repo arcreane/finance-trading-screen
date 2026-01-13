@@ -22,8 +22,8 @@ void ChartWidget::setupChart() {
   chart->setTitle("BTC Daily Chart");
   
   // Background Colors
-  chart->setBackgroundBrush(QBrush(QColor("#131722")));
-  chart->setPlotAreaBackgroundBrush(QBrush(QColor("#131722")));
+  chart->setBackgroundBrush(QBrush(QColor("#161616")));
+  chart->setPlotAreaBackgroundBrush(QBrush(QColor("#161616")));
   chart->setPlotAreaBackgroundVisible(true);
   
   // Title Color
@@ -33,7 +33,7 @@ void ChartWidget::setupChart() {
 
   chartView = new QChartView(chart);
   chartView->setRenderHint(QPainter::Antialiasing);
-  chartView->setBackgroundBrush(QBrush(QColor("#131722")));
+  chartView->setBackgroundBrush(QBrush(QColor("#161616")));
 
   QVBoxLayout *layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
