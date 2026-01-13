@@ -3,6 +3,7 @@
 #include "orderbook.h"
 #include "TradingBottomPanel.h"
 #include "ChartWidget.h"
+#include "OrderEntryPanel.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -103,10 +104,12 @@ void MainWindow::setupUi() {
 
     // --- RIGHT CONTAINER (ZONE 4) ---
     QFrame* zone4 = new QFrame();
-    zone4->setFixedWidth(300);
-    zone4->setStyleSheet("background-color: #1e1e1e; border: 1px solid #0000ff;");
+    zone4->setFixedWidth(320);
+    zone4->setStyleSheet("background-color: #161616; border: none;");
     QVBoxLayout* z4l = new QVBoxLayout(zone4);
-    z4l->addWidget(new QLabel("ZONE 4: ORDER ENTRY"));
+    z4l->setContentsMargins(0, 0, 0, 0);
+    OrderEntryPanel* orderEntry = new OrderEntryPanel(zone4);
+    z4l->addWidget(orderEntry);
 
     mainLayout->addWidget(zone4, 0);
 }
