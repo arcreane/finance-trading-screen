@@ -3,6 +3,7 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QGraphicsLayout>
+#include <cmath>
 
 ChartWidget::ChartWidget(QWidget *parent) : QWidget(parent) {
   setupChart();
@@ -19,7 +20,7 @@ ChartWidget::~ChartWidget() {}
 
 void ChartWidget::setupChart() {
   chart = new QChart();
-  chart->setTitle("BTC Daily Chart");
+  chart->setTitle("");
   
   // Background Colors
   chart->setBackgroundBrush(QBrush(QColor("#161616")));
@@ -30,6 +31,10 @@ void ChartWidget::setupChart() {
   chart->setTitleBrush(QBrush(QColor("#d1d4dc")));
 
   chart->legend()->setVisible(false);
+  
+  // Reduce margins to zero
+  chart->setMargins(QMargins(0, 0, 0, 0));
+  chart->layout()->setContentsMargins(0, 0, 0, 0);
 
   chartView = new QChartView(chart);
   chartView->setRenderHint(QPainter::Antialiasing);
@@ -241,7 +246,7 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
     qDebug() << "AxisX Set.";
 
     qDebug() << "Setting AxisY Range...";
-    axisY->setRange(minPrice * 0.95, maxPrice * 1.05);
+    axisY->setRange(minPrice * 0.99, maxPrice * 1.01);
     qDebug() << "AxisY Set.";
     
     // Volume logic removed
@@ -261,9 +266,36 @@ void ChartWidget::wheelEvent(QWheelEvent *event) {
 
 void ChartWidget::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
-        m_isDragging = true;
         m_lastMousePos = event->pos();
-        setCursor(Qt::ClosedHandCursor);
+        m_isDragging = true;
+
+        // Map widget coordinates to chart item coordinates
+        QPointF scenePos = chartView->mapToScene(event->pos());
+        QPointF chartPos = chart->mapFromScene(scenePos);
+        QRectF plotArea = chart->plotArea();
+
+        if (plotArea.contains(chartPos)) {
+            m_dragMode = DragMode::Pan;
+            setCursor(Qt::ClosedHandCursor);
+        } else {
+            // Check for Axes
+            // X Axis is below plotArea
+            // Y Axis is right/left of plotArea
+            
+            // Allow some tolerance/margin for easier grabbing
+            bool inXAxis = (chartPos.x() >= plotArea.left() && chartPos.x() <= plotArea.right() && chartPos.y() > plotArea.bottom());
+            bool inYAxis = (chartPos.y() >= plotArea.top() && chartPos.y() <= plotArea.bottom() && (chartPos.x() > plotArea.right() || chartPos.x() < plotArea.left()));
+            
+            if (inXAxis) {
+                 m_dragMode = DragMode::ZoomX;
+                 setCursor(Qt::SizeHorCursor);
+            } else if (inYAxis) {
+                 m_dragMode = DragMode::ZoomY;
+                 setCursor(Qt::SizeVerCursor);
+            } else {
+                 m_dragMode = DragMode::None;
+            }
+        }
         event->accept();
     }
     QWidget::mousePressEvent(event);
@@ -272,6 +304,7 @@ void ChartWidget::mousePressEvent(QMouseEvent *event) {
 void ChartWidget::mouseReleaseEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         m_isDragging = false;
+        m_dragMode = DragMode::None;
         setCursor(Qt::ArrowCursor);
         event->accept();
     }
@@ -279,10 +312,48 @@ void ChartWidget::mouseReleaseEvent(QMouseEvent *event) {
 }
 
 void ChartWidget::mouseMoveEvent(QMouseEvent *event) {
-    // Panning Logic
+    // Panning & Zooming Logic
     if (m_isDragging) {
         QPoint delta = event->pos() - m_lastMousePos;
-        chart->scroll(-delta.x(), delta.y());
+        
+        if (m_dragMode == DragMode::Pan) {
+            chart->scroll(-delta.x(), delta.y());
+        } 
+        else if (m_dragMode == DragMode::ZoomX) {
+            // Drag horizontal: Right -> Zoom In, Left -> Zoom Out
+            double sensitivity = 0.005; 
+            double factor = std::pow(1.0 - sensitivity, delta.x());
+            
+            qint64 min = axisX->min().toMSecsSinceEpoch();
+            qint64 max = axisX->max().toMSecsSinceEpoch();
+            qint64 center = (min + max) / 2;
+            qint64 span = max - min;
+            qint64 newSpan = span * factor;
+            
+            // Limit minimum span to avoid issues (e.g. 1 minute)
+            if (newSpan < 60000) newSpan = 60000;
+
+            axisX->setRange(QDateTime::fromMSecsSinceEpoch(center - newSpan/2), 
+                            QDateTime::fromMSecsSinceEpoch(center + newSpan/2));
+
+        } 
+        else if (m_dragMode == DragMode::ZoomY) {
+            // Drag vertical: Up -> Zoom In, Down -> Zoom Out
+            double sensitivity = 0.005;
+            double factor = std::pow(1.0 + sensitivity, delta.y());
+            
+            double min = axisY->min();
+            double max = axisY->max();
+            double center = (min + max) / 2;
+            double span = max - min;
+            double newSpan = span * factor;
+            
+            // Limit minimum span?
+            if (newSpan < 0.0001) newSpan = 0.0001;
+
+            axisY->setRange(center - newSpan/2, center + newSpan/2);
+        }
+
         m_lastMousePos = event->pos();
     }
 

@@ -41,7 +41,9 @@ private:
   QGraphicsTextItem *dateLabel;
   QGraphicsTextItem *infoLabel; // HUD for candle info
 
-  // Panning state
+  // Panning & Zooming state
+  enum class DragMode { None, Pan, ZoomX, ZoomY };
+  DragMode m_dragMode = DragMode::None;
   bool m_isDragging = false;
   QPoint m_lastMousePos;
 

@@ -125,6 +125,7 @@ bool TickerSelector::event(QEvent *event) {
 // ==========================================
 
 TickerPlaceholder::TickerPlaceholder(QWidget *parent) : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUI();
 }
 

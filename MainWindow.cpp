@@ -63,6 +63,8 @@ void MainWindow::setupUi() {
   QFrame *zone2 = new QFrame();
   zone2->setStyleSheet("background-color: #161616;");
   QVBoxLayout *z2l = new QVBoxLayout(zone2);
+  z2l->setContentsMargins(0, 0, 0, 0);
+  z2l->setSpacing(0);
 
   ChartWidget *chartWidget = new ChartWidget();
   z2l->addWidget(chartWidget);
