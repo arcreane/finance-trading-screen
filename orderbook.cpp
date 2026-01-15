@@ -30,50 +30,30 @@ void OrderBook::setupUi() {
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    // Header Row (Custom Labels to match screenshot)
-    QWidget* headerWidget = new QWidget(this);
-    headerWidget->setStyleSheet("background-color: #161616;");
-    QHBoxLayout* headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(0, 5, 0, 5);
-    headerLayout->setSpacing(0);
+    // Headers handled by asksTable directly for perfect alignment
     
-    QLabel* lblPrice = new QLabel("Price", this);
-    QLabel* lblSize = new QLabel("Amount", this);
-    QLabel* lblTotal = new QLabel("Total", this);
-    
-    QString headerStyle = "color: #888; font-size: 9pt; font-weight: bold;";
-    lblPrice->setStyleSheet(headerStyle);
-    lblSize->setStyleSheet(headerStyle);
-    lblTotal->setStyleSheet(headerStyle);
-    
-    lblPrice->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    // Screenshot: "Price" label is left, numbers are right? Let's check screenshot again... I can't.
-    // Standard: Numbers right aligned. Labels usually match.
-    // Let's use Stretch for spacing.
-    
-    headerLayout->addWidget(lblPrice, 1, Qt::AlignRight);
-    headerLayout->addWidget(lblSize, 1, Qt::AlignRight);
-    headerLayout->addWidget(lblTotal, 1, Qt::AlignRight);
-    
-    mainLayout->addWidget(headerWidget);
-
-    // Spacer to push Asks down (so they align to bottom of this section, near Spread)
-    // This stretch combined with one after bids centers the orderbook vertically
-    mainLayout->addStretch(1);
-
     // Asks Table (Top)
     asksTable = new QTableWidget(this);
     asksTable->setColumnCount(3);
-    asksTable->horizontalHeader()->setVisible(false);
+    asksTable->setHorizontalHeaderLabels({"Price", "Amount", "Total"});
+    
+    // Style the Native Header
+    asksTable->horizontalHeader()->setVisible(true);
+    asksTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    asksTable->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    asksTable->horizontalHeader()->setStyleSheet(
+        "QHeaderView::section { background-color: #161616; color: #848e9c; border: none; font-weight: bold; font-size: 11px; padding: 4px; }"
+    );
+
     asksTable->verticalHeader()->setVisible(false);
     asksTable->setShowGrid(false);
     asksTable->setSelectionMode(QAbstractItemView::NoSelection);
     asksTable->setFocusPolicy(Qt::NoFocus);
     asksTable->setStyleSheet("background-color: #161616; border: none;");
     asksTable->setItemDelegate(new DepthDelegate(asksTable));
-    asksTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    asksTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // Fixed height to content
-    mainLayout->addWidget(asksTable, 0); // No stretch for table itself
+    asksTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); 
+    mainLayout->addWidget(asksTable, 0); 
+
 
     // Spread Label (Middle)
     spreadLabel = new QLabel(this);
@@ -260,10 +240,20 @@ void OrderBook::populateTable(QTableWidget* table, const std::vector<nlohmann::j
 
     // Resize table height to fit content (if it's the Asks table or we want tight layout)
     // Especially important for Asks table to let the spacer above it work.
+    table->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff); // Disable scrollbar to force full display logic
+    
     if (table->rowCount() > 0) {
         int height = 0;
         for (int i=0; i<table->rowCount(); ++i) height += table->rowHeight(i);
-        // Add a bit for margins if needed, or rely on precise calc
+        
+        // Add header height if visible
+        if (table->horizontalHeader()->isVisible()) {
+            height += table->horizontalHeader()->height();
+        }
+        
+        // Add a small buffer for borders/margins just in case (e.g. 2px)
+        height += 2; 
+
         table->setFixedHeight(height);
     } else {
         table->setFixedHeight(0);

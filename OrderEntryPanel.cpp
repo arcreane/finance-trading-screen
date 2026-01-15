@@ -50,7 +50,7 @@ void OrderEntryPanel::setupUI() {
 
     // Row 2: Market / Limit tabs
     QHBoxLayout *tabRow = new QHBoxLayout();
-    tabRow->setSpacing(0);
+    tabRow->setSpacing(10);
 
     m_marketTab = new QPushButton("Market");
     m_marketTab->setCheckable(true);

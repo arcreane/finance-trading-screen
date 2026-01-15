@@ -35,23 +35,27 @@ public:
             int width = static_cast<int>(option.rect.width() * ratio);
             
             QRect barRect = option.rect;
-            // Align bar to the right
+            // A bit of spacing between bars and edge if desired, or flush. Flush is standard.
             barRect.setLeft(barRect.right() - width);
             
-            QColor barColor = isBid ? QColor(0, 255, 0, 30) : QColor(255, 0, 0, 30); // Transparent Green/Red
+            // Softer colors
+            QColor barColor = isBid ? QColor(14, 203, 129, 40) : QColor(246, 70, 93, 40); 
             painter->fillRect(barRect, barColor);
         }
 
-        // Draw text
+        // Draw text with padding
         QString text = index.data(Qt::DisplayRole).toString();
-        painter->setPen(QColor("#dddddd"));
         
         // Specific colors for Price column (Column 0)
         if (index.column() == 0) {
-             painter->setPen(isBid ? QColor("#00ff00") : QColor("#ff4444"));
+             painter->setPen(isBid ? QColor("#0ecb81") : QColor("#f6465d")); // Binance-like Green/Red
+        } else {
+             painter->setPen(QColor("#c3c5cb")); // Light gray for size/total
         }
 
-        painter->drawText(option.rect.adjusted(0, 0, -5, 0), Qt::AlignRight | Qt::AlignVCenter, text);
+        painter->setFont(option.font); // Ensure font is used
+        // Add 8px padding from right
+        painter->drawText(option.rect.adjusted(0, 0, -8, 0), Qt::AlignRight | Qt::AlignVCenter, text);
 
         painter->restore();
     }
