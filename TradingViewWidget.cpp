@@ -1,0 +1,1 @@
+#include "TradingViewWidget.h"

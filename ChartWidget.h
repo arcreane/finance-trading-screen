@@ -27,12 +27,12 @@ private:
   QChartView *chartView;
   QChart *chart;
   QCandlestickSeries *series;
-  QBarSeries *volumeSeries; // Volume
+  // QBarSeries *volumeSeries; // Removed
   QLineSeries *maSeries;    // Moving Average
   
   QDateTimeAxis *axisX;
   QValueAxis *axisY;
-  QValueAxis *axisYVolume; // Separate axis for volume
+  // QValueAxis *axisYVolume; // Removed
 
   // Crosshair items
   QGraphicsLineItem *crosshairX;

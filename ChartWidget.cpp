@@ -55,10 +55,8 @@ void ChartWidget::setupChart() {
   maSeries->setPen(maPen);
   chart->addSeries(maSeries);
 
-  // --- 3. VOLUME SERIES ---
-  volumeSeries = new QBarSeries();
-  volumeSeries->setName("Volume");
-  chart->addSeries(volumeSeries);
+  // --- VOLUME REMOVED TO PREVENT CRASH WITH QDATETIMEAXIS ---
+  // QBarSeries requires QBarCategoryAxis, inconsistent with QDateTimeAxis for candles.
 
   // --- AXES ---
   auto axisFont = QFont("Segoe UI", 9);
@@ -76,7 +74,6 @@ void ChartWidget::setupChart() {
   
   series->attachAxis(axisX);
   maSeries->attachAxis(axisX);
-  volumeSeries->attachAxis(axisX);
 
   // Y Axis (Price) - Right
   axisY = new QValueAxis();
@@ -88,13 +85,6 @@ void ChartWidget::setupChart() {
   
   series->attachAxis(axisY);
   maSeries->attachAxis(axisY);
-
-  // Y Axis (Volume) - Left (Hidden or subtle)
-  axisYVolume = new QValueAxis();
-  axisYVolume->setVisible(false); // Hide axis labels to keep it clean
-  // We will set range manually to keep volume at bottom
-  chart->addAxis(axisYVolume, Qt::AlignLeft);
-  volumeSeries->attachAxis(axisYVolume);
 
   // --- CROSSHAIR ---
   QPen crosshairPen(QColor("#787b86"), 1, Qt::DashLine);
@@ -149,7 +139,7 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
 
   series->clear();
   maSeries->clear();
-  volumeSeries->clear();
+  // volumeSeries->clear(); // Removed
   
   qint64 minTimestamp = std::numeric_limits<qint64>::max();
   qint64 maxTimestamp = std::numeric_limits<qint64>::min();
@@ -160,14 +150,27 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
   QList<double> closes; // For SMA calculation
 
   while (query.next()) {
-    QString timestampStr = query.value(0).toString();
+    QString timestampStr = query.value(0).toString().trimmed();
+    
+    // Aggressive sanitization: corrupted data has extra lines/spaces
+    if (timestampStr.length() >= 19) {
+        timestampStr = timestampStr.left(19);
+    } else {
+        qDebug() << "Skipping invalid timestamp length:" << timestampStr.length();
+        continue; // Skip invalid rows
+    }
+
     double open = query.value(1).toDouble();
     double high = query.value(2).toDouble();
     double low = query.value(3).toDouble();
     double close = query.value(4).toDouble();
     double volume = query.value(5).toDouble();
 
+    qDebug() << "Row: " << timestampStr << " O: " << open << " H: " << high;
+
     QDateTime timestamp = QDateTime::fromString(timestampStr, "yyyy-MM-dd HH:mm:ss");
+    
+    // Fallback moved inside length check, though likely unnecessary if format is fixed
     if (!timestamp.isValid()) timestamp = QDateTime::fromString(timestampStr, Qt::ISODate);
 
     if (timestamp.isValid()) {
@@ -177,18 +180,18 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
       QCandlestickSet *set = new QCandlestickSet(open, high, low, close, ts);
       series->append(set);
 
-      // Volume
-      QBarSet *volSet = new QBarSet("Volume");
-      volSet->append(volume);
-      
-      // Color based on price action
-      if (close >= open)
-          volSet->setColor(QColor("#089981")); // Green
-      else
-          volSet->setColor(QColor("#f23645")); // Red
-          
-      volSet->setBorderColor(Qt::transparent);
-      volumeSeries->append(volSet);
+      // Volume (disabled - causes Qt assertion errors with QDateTimeAxis)
+      // QBarSet *volSet = new QBarSet("Volume");
+      // volSet->append(volume);
+      // 
+      // // Color based on price action
+      // if (close >= open)
+      //     volSet->setColor(QColor("#089981")); // Green
+      // else
+      //     volSet->setColor(QColor("#f23645")); // Red
+      //     
+      // volSet->setBorderColor(Qt::transparent);
+      // volumeSeries->append(volSet);
 
       if (volume > maxVolume) maxVolume = volume;
       
@@ -204,16 +207,46 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
       if (ts > maxTimestamp) maxTimestamp = ts;
       if (low < minPrice) minPrice = low;
       if (high > maxPrice) maxPrice = high;
+    } else {
+         qDebug() << "Invalid timestamp object for string:" << timestampStr;
     }
   }
 
-  if (series->count() > 0) {
+  qDebug() << "Finished Data Loop. Count:" << series->count();
+  qDebug() << "MinTS:" << minTimestamp << "MaxTS:" << maxTimestamp;
+  qDebug() << "MinPrice:" << minPrice << "MaxPrice:" << maxPrice;
+  qDebug() << "MaxVolume:" << maxVolume;
+
+  if (series->count() > 0 && minTimestamp != std::numeric_limits<qint64>::max() && maxTimestamp != std::numeric_limits<qint64>::min()) {
+    
+    // Safety check for flat ranges
+    if (minTimestamp >= maxTimestamp) {
+        qDebug() << "Adjusting flat Time range";
+        maxTimestamp = minTimestamp + 86400000; // Adds 1 day
+    }
+    
+    if (minPrice >= maxPrice) {
+        qDebug() << "Adjusting flat Price range";
+        minPrice = minPrice * 0.95;
+        maxPrice = (maxPrice == 0 ? 1 : maxPrice * 1.05);
+    }
+
+    if (maxVolume <= 0) {
+        maxVolume = 100; // Default
+    }
+
+    qDebug() << "Setting AxisX Range...";
     axisX->setRange(QDateTime::fromMSecsSinceEpoch(minTimestamp),
                     QDateTime::fromMSecsSinceEpoch(maxTimestamp));
+    qDebug() << "AxisX Set.";
+
+    qDebug() << "Setting AxisY Range...";
     axisY->setRange(minPrice * 0.95, maxPrice * 1.05);
+    qDebug() << "AxisY Set.";
     
-    // Volume Axis Scaling: 0 to 5x MaxVolume to keep bars at bottom 20%
-    axisYVolume->setRange(0, maxVolume * 5);
+    // Volume logic removed
+  } else {
+      qDebug() << "Skipping setRange due to no valid data.";
   }
 }
 
