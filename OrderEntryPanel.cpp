@@ -35,12 +35,17 @@ void OrderEntryPanel::setupUI() {
     m_crossBtn->setChecked(true);
     m_crossBtn->setFixedHeight(32);
 
-    m_leverageBtn = new QPushButton("3x");
-    m_leverageBtn->setCheckable(true);
-    m_leverageBtn->setFixedHeight(32);
+    m_isolatedBtn = new QPushButton("Isolated");
+    m_isolatedBtn->setCheckable(true);
+    m_isolatedBtn->setFixedHeight(32);
+
+    QButtonGroup *marginGroup = new QButtonGroup(this);
+    marginGroup->addButton(m_crossBtn);
+    marginGroup->addButton(m_isolatedBtn);
+    marginGroup->setExclusive(true);
 
     leverageRow->addWidget(m_crossBtn);
-    leverageRow->addWidget(m_leverageBtn);
+    leverageRow->addWidget(m_isolatedBtn);
     mainLayout->addLayout(leverageRow);
 
     // Row 2: Market / Limit tabs
@@ -223,25 +228,7 @@ void OrderEntryPanel::setupUI() {
     mainLayout->addWidget(createInfoRow("Margin Required", &m_marginValue));
     m_marginValue->setText("1.77 USDC");
 
-    // Fees with strikethrough
-    QWidget *feesRow = new QWidget();
-    QHBoxLayout *feesLayout = new QHBoxLayout(feesRow);
-    feesLayout->setContentsMargins(0, 2, 0, 2);
 
-    QLabel *feesLabel = new QLabel("Fees");
-    feesLabel->setStyleSheet(QString("color: %1;").arg(COLOR_TEXT_DIM));
-
-    m_feesValue = new QLabel();
-    m_feesValue->setTextFormat(Qt::RichText);
-    m_feesValue->setText(QString("<span style='color:%1;'>⚡</span> 0.0432% / 0.0144%<br>"
-                                  "<span style='text-decoration:line-through; color:%2;'>0.0450% / 0.0150%</span>")
-                         .arg(COLOR_BUY, COLOR_TEXT_DIM));
-    m_feesValue->setAlignment(Qt::AlignRight);
-
-    feesLayout->addWidget(feesLabel);
-    feesLayout->addStretch();
-    feesLayout->addWidget(m_feesValue);
-    mainLayout->addWidget(feesRow);
 }
 
 QWidget* OrderEntryPanel::createInfoRow(const QString &label, QLabel **valueLabel) {
@@ -336,7 +323,7 @@ void OrderEntryPanel::updateTheme() {
         "QPushButton:checked { border-color: %4; color: %5; }"
     ).arg(COLOR_INPUT_BG, COLOR_TEXT_DIM, COLOR_BORDER, accentColor, COLOR_TEXT);
     m_crossBtn->setStyleSheet(headerBtnStyle);
-    m_leverageBtn->setStyleSheet(headerBtnStyle);
+    m_isolatedBtn->setStyleSheet(headerBtnStyle);
 
     // Tab buttons
     QString tabStyle = QString(

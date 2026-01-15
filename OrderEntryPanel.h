@@ -34,7 +34,7 @@ private:
 
     // Header buttons
     QPushButton *m_crossBtn;
-    QPushButton *m_leverageBtn;
+    QPushButton *m_isolatedBtn;
     QPushButton *m_marketTab;
     QPushButton *m_limitTab;
 
@@ -69,7 +69,7 @@ private:
     QLabel *m_liqPriceValue;
     QLabel *m_orderValueValue;
     QLabel *m_marginValue;
-    QLabel *m_feesValue;
+
 
     void setupUI();
     void setupStyle();
