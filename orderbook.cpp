@@ -58,6 +58,7 @@ void OrderBook::setupUi() {
     mainLayout->addWidget(headerWidget);
 
     // Spacer to push Asks down (so they align to bottom of this section, near Spread)
+    // This stretch combined with one after bids centers the orderbook vertically
     mainLayout->addStretch(1);
 
     // Asks Table (Top)
@@ -91,7 +92,11 @@ void OrderBook::setupUi() {
     bidsTable->setStyleSheet("background-color: #161616; border: none;");
     bidsTable->setItemDelegate(new DepthDelegate(bidsTable));
     bidsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    mainLayout->addWidget(bidsTable, 1);
+    bidsTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // Fixed height to content
+    mainLayout->addWidget(bidsTable, 0); // No stretch for table itself
+
+    // Spacer after bids to center the orderbook vertically
+    mainLayout->addStretch(1);
 }
 
 void OrderBook::updateOrderBook() {
@@ -132,9 +137,10 @@ void OrderBook::loadData(const std::string& filename) {
                 return a["price"] < b["price"];
             });
             
-            // Keep only top 6
-            if (asks.size() > 6) {
-                asks.resize(6);
+            // Keep only top 7 (configurable depth)
+            const size_t DEPTH = 7;
+            if (asks.size() > DEPTH) {
+                asks.resize(DEPTH);
             }
             
             // Sort Asks Descending (Highest first) for display (Vertical Layout: High -> Low)
@@ -152,9 +158,10 @@ void OrderBook::loadData(const std::string& filename) {
                 return a["price"] > b["price"];
             });
             
-            // Keep only top 6
-            if (bids.size() > 6) {
-                bids.resize(6);
+            // Keep only top 7 (configurable depth)
+            const size_t DEPTH = 7;
+            if (bids.size() > DEPTH) {
+                bids.resize(DEPTH);
             }
             
             populateTable(bidsTable, bids, true, maxTotal);
