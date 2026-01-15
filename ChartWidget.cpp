@@ -39,6 +39,11 @@ void ChartWidget::setupChart() {
   chartView = new QChartView(chart);
   chartView->setRenderHint(QPainter::Antialiasing);
   chartView->setBackgroundBrush(QBrush(QColor("#161616")));
+  chartView->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+
+  // Install event filter to capture events from the view
+  chartView->installEventFilter(this);
+  chartView->viewport()->installEventFilter(this);
 
   QVBoxLayout *layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
@@ -255,151 +260,163 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
   }
 }
 
-void ChartWidget::wheelEvent(QWheelEvent *event) {
-    if (event->angleDelta().y() > 0) {
-        chart->zoomIn();
-    } else {
-        chart->zoomOut();
+bool ChartWidget::eventFilter(QObject *watched, QEvent *event) {
+    if (watched == chartView || watched == chartView->viewport()) {
+        if (event->type() == QEvent::MouseButtonPress) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button() == Qt::LeftButton) {
+                m_lastMousePos = mouseEvent->pos();
+                m_isDragging = true;
+                
+                QPointF scenePos = chartView->mapToScene(mouseEvent->pos());
+                QPointF chartPos = chart->mapFromScene(scenePos);
+                QRectF plotArea = chart->plotArea();
+                
+                if (plotArea.contains(chartPos)) {
+                    m_dragMode = DragMode::Pan;
+                    setCursor(Qt::ClosedHandCursor);
+                } else {
+                    bool inXAxis = (chartPos.x() >= plotArea.left() && chartPos.x() <= plotArea.right() && chartPos.y() > plotArea.bottom());
+                    bool inYAxis = (chartPos.y() >= plotArea.top() && chartPos.y() <= plotArea.bottom() && (chartPos.x() > plotArea.right() || chartPos.x() < plotArea.left()));
+
+                    if (inXAxis) {
+                         m_dragMode = DragMode::ZoomX;
+                         setCursor(Qt::SizeHorCursor);
+                    } else if (inYAxis) {
+                         m_dragMode = DragMode::ZoomY;
+                         setCursor(Qt::SizeVerCursor);
+                    } else {
+                         m_dragMode = DragMode::None;
+                    }
+                }
+                return true;
+            }
+        } 
+        else if (event->type() == QEvent::MouseButtonRelease) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+            if (mouseEvent->button() == Qt::LeftButton) {
+                m_isDragging = false;
+                m_dragMode = DragMode::None;
+                setCursor(Qt::ArrowCursor);
+                return true;
+            }
+        }
+        else if (event->type() == QEvent::MouseMove) {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+            
+            // Panning & Zooming Logic
+            if (m_isDragging) {
+                QPoint delta = mouseEvent->pos() - m_lastMousePos;
+                
+                if (m_dragMode == DragMode::Pan) {
+                    chart->scroll(-delta.x(), delta.y());
+                } 
+                else if (m_dragMode == DragMode::ZoomX) {
+                    double sensitivity = 0.005; 
+                    double factor = std::pow(1.0 - sensitivity, delta.x());
+                    
+                    if (axisX) {
+                        qint64 min = axisX->min().toMSecsSinceEpoch();
+                        qint64 max = axisX->max().toMSecsSinceEpoch();
+                        qint64 center = (min + max) / 2;
+                        qint64 span = max - min;
+                        qint64 newSpan = span * factor;
+                        if (newSpan < 60000) newSpan = 60000;
+                        axisX->setRange(QDateTime::fromMSecsSinceEpoch(center - newSpan/2), 
+                                        QDateTime::fromMSecsSinceEpoch(center + newSpan/2));
+                    }
+                } 
+                else if (m_dragMode == DragMode::ZoomY) {
+                    double sensitivity = 0.005;
+                    double factor = std::pow(1.0 + sensitivity, delta.y());
+                    
+                    if (axisY) {
+                        double min = axisY->min();
+                        double max = axisY->max();
+                        double center = (min + max) / 2;
+                        double span = max - min;
+                        double newSpan = span * factor;
+                        if (newSpan < 0.0001) newSpan = 0.0001;
+                        axisY->setRange(center - newSpan/2, center + newSpan/2);
+                    }
+                }
+                m_lastMousePos = mouseEvent->pos();
+            }
+
+            // Crosshair & Info Logic
+            // Map strictly to plot area
+            QPointF scenePos = chartView->mapToScene(mouseEvent->pos());
+            QPointF chartPos = chart->mapFromScene(scenePos);
+
+            if (chart->plotArea().contains(chartPos)) {
+                crosshairX->setVisible(true);
+                crosshairY->setVisible(true);
+                
+                updateCrosshair(chartPos);
+
+                // Update Info Label
+                if (series->count() > 0) {
+                     QPointF valuePoint = chart->mapToValue(chartPos);
+                     qint64 timestamp = (qint64)valuePoint.x();
+                     
+                     QCandlestickSet *closestSet = nullptr;
+                     qint64 minDiff = std::numeric_limits<qint64>::max();
+
+                     for (auto set : series->sets()) {
+                         qint64 diff = std::abs(set->timestamp() - timestamp);
+                         if (diff < minDiff) {
+                             minDiff = diff;
+                             closestSet = set;
+                         }
+                     }
+
+                     if (closestSet && minDiff < 86400000) {
+                         QString info = QString("BTC | %1 | O: %2 | H: %3 | L: %4 | C: %5")
+                                            .arg(QDateTime::fromMSecsSinceEpoch(closestSet->timestamp()).toString("yyyy-MM-dd"))
+                                            .arg(closestSet->open(), 0, 'f', 2)
+                                            .arg(closestSet->high(), 0, 'f', 2)
+                                            .arg(closestSet->low(), 0, 'f', 2)
+                                            .arg(closestSet->close(), 0, 'f', 2);
+                         infoLabel->setPlainText(info);
+                         if (closestSet->close() >= closestSet->open()) {
+                              infoLabel->setDefaultTextColor(QColor("#089981"));
+                         } else {
+                              infoLabel->setDefaultTextColor(QColor("#f23645"));
+                         }
+                     }
+                }
+            } else {
+                crosshairX->setVisible(false);
+                crosshairY->setVisible(false);
+            }
+            return true;
+        }
+        else if (event->type() == QEvent::Wheel) {
+            QWheelEvent *wheelEvent = static_cast<QWheelEvent*>(event);
+            if (wheelEvent->angleDelta().y() > 0) {
+                chart->zoomIn();
+            } else {
+                chart->zoomOut();
+            }
+            return true;
+        }
     }
-    event->accept();
+    return QWidget::eventFilter(watched, event);
+}
+
+void ChartWidget::wheelEvent(QWheelEvent *event) {
+    QWidget::wheelEvent(event);
 }
 
 void ChartWidget::mousePressEvent(QMouseEvent *event) {
-    if (event->button() == Qt::LeftButton) {
-        m_lastMousePos = event->pos();
-        m_isDragging = true;
-
-        // Map widget coordinates to chart item coordinates
-        QPointF scenePos = chartView->mapToScene(event->pos());
-        QPointF chartPos = chart->mapFromScene(scenePos);
-        QRectF plotArea = chart->plotArea();
-
-        if (plotArea.contains(chartPos)) {
-            m_dragMode = DragMode::Pan;
-            setCursor(Qt::ClosedHandCursor);
-        } else {
-            // Check for Axes
-            // X Axis is below plotArea
-            // Y Axis is right/left of plotArea
-            
-            // Allow some tolerance/margin for easier grabbing
-            bool inXAxis = (chartPos.x() >= plotArea.left() && chartPos.x() <= plotArea.right() && chartPos.y() > plotArea.bottom());
-            bool inYAxis = (chartPos.y() >= plotArea.top() && chartPos.y() <= plotArea.bottom() && (chartPos.x() > plotArea.right() || chartPos.x() < plotArea.left()));
-            
-            if (inXAxis) {
-                 m_dragMode = DragMode::ZoomX;
-                 setCursor(Qt::SizeHorCursor);
-            } else if (inYAxis) {
-                 m_dragMode = DragMode::ZoomY;
-                 setCursor(Qt::SizeVerCursor);
-            } else {
-                 m_dragMode = DragMode::None;
-            }
-        }
-        event->accept();
-    }
     QWidget::mousePressEvent(event);
 }
 
 void ChartWidget::mouseReleaseEvent(QMouseEvent *event) {
-    if (event->button() == Qt::LeftButton) {
-        m_isDragging = false;
-        m_dragMode = DragMode::None;
-        setCursor(Qt::ArrowCursor);
-        event->accept();
-    }
     QWidget::mouseReleaseEvent(event);
 }
 
 void ChartWidget::mouseMoveEvent(QMouseEvent *event) {
-    // Panning & Zooming Logic
-    if (m_isDragging) {
-        QPoint delta = event->pos() - m_lastMousePos;
-        
-        if (m_dragMode == DragMode::Pan) {
-            chart->scroll(-delta.x(), delta.y());
-        } 
-        else if (m_dragMode == DragMode::ZoomX) {
-            // Drag horizontal: Right -> Zoom In, Left -> Zoom Out
-            double sensitivity = 0.005; 
-            double factor = std::pow(1.0 - sensitivity, delta.x());
-            
-            qint64 min = axisX->min().toMSecsSinceEpoch();
-            qint64 max = axisX->max().toMSecsSinceEpoch();
-            qint64 center = (min + max) / 2;
-            qint64 span = max - min;
-            qint64 newSpan = span * factor;
-            
-            // Limit minimum span to avoid issues (e.g. 1 minute)
-            if (newSpan < 60000) newSpan = 60000;
-
-            axisX->setRange(QDateTime::fromMSecsSinceEpoch(center - newSpan/2), 
-                            QDateTime::fromMSecsSinceEpoch(center + newSpan/2));
-
-        } 
-        else if (m_dragMode == DragMode::ZoomY) {
-            // Drag vertical: Up -> Zoom In, Down -> Zoom Out
-            double sensitivity = 0.005;
-            double factor = std::pow(1.0 + sensitivity, delta.y());
-            
-            double min = axisY->min();
-            double max = axisY->max();
-            double center = (min + max) / 2;
-            double span = max - min;
-            double newSpan = span * factor;
-            
-            // Limit minimum span?
-            if (newSpan < 0.0001) newSpan = 0.0001;
-
-            axisY->setRange(center - newSpan/2, center + newSpan/2);
-        }
-
-        m_lastMousePos = event->pos();
-    }
-
-    // Crosshair & Info Logic
-    if (chart->plotArea().contains(event->pos())) {
-        crosshairX->setVisible(true);
-        crosshairY->setVisible(true);
-        
-        QPointF point = chart->mapToValue(event->pos());
-        updateCrosshair(event->pos());
-
-        // Update Info Label
-        qint64 timestamp = (qint64)point.x();
-        // Find closest candle
-        QCandlestickSet *closestSet = nullptr;
-        qint64 minDiff = std::numeric_limits<qint64>::max();
-
-        for (auto set : series->sets()) {
-            qint64 diff = std::abs(set->timestamp() - timestamp);
-            if (diff < minDiff) {
-                minDiff = diff;
-                closestSet = set;
-            }
-        }
-
-        if (closestSet && minDiff < 86400000) { // Within 1 day
-            QString info = QString("BTC | %1 | O: %2 | H: %3 | L: %4 | C: %5")
-                               .arg(QDateTime::fromMSecsSinceEpoch(closestSet->timestamp()).toString("yyyy-MM-dd"))
-                               .arg(closestSet->open(), 0, 'f', 2)
-                               .arg(closestSet->high(), 0, 'f', 2)
-                               .arg(closestSet->low(), 0, 'f', 2)
-                               .arg(closestSet->close(), 0, 'f', 2);
-            infoLabel->setPlainText(info);
-            
-            // Color code based on movement
-            if (closestSet->close() >= closestSet->open()) {
-                 infoLabel->setDefaultTextColor(QColor("#089981")); // Green
-            } else {
-                 infoLabel->setDefaultTextColor(QColor("#f23645")); // Red
-            }
-        }
-
-    } else {
-        crosshairX->setVisible(false);
-        crosshairY->setVisible(false);
-    }
     QWidget::mouseMoveEvent(event);
 }
 
@@ -419,6 +436,9 @@ void ChartWidget::updateCrosshair(const QPointF &pos) {
     QLineF vLine(pos.x(), plotArea.top(), pos.x(), plotArea.bottom());
     QLineF hLine(plotArea.left(), pos.y(), plotArea.right(), pos.y());
     
-    crosshairX->setLine(vLine);
-    crosshairY->setLine(hLine);
+    // Safety check for invalid lines
+    if (vLine.length() > 0 && hLine.length() > 0) {
+        crosshairX->setLine(vLine);
+        crosshairY->setLine(hLine);
+    }
 }
