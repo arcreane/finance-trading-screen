@@ -47,6 +47,10 @@ class TickerPlaceholder : public QWidget {
 public:
     explicit TickerPlaceholder(QWidget *parent = nullptr);
 
+signals:
+    // Signal emitted when user selects a different coin
+    void tickerChanged(const QString &symbol);
+
 private slots:
     void openTickerSelector();
     // Slot pour recevoir les données et mettre à jour l'UI

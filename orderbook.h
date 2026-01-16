@@ -68,6 +68,9 @@ public:
     explicit OrderBook(QWidget *parent = nullptr);
     ~OrderBook();
 
+public slots:
+    void setSymbol(const QString& symbol);
+
 private slots:
     void updateOrderBook();
 
@@ -81,6 +84,7 @@ private:
     QLabel* spreadLabel;
     QTimer* simulationTimer;
     int currentFileIndex;
+    QString m_currentSymbol;
     
     // Helper to format numbers
     QString formatNumber(double value, int decimals);

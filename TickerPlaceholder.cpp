@@ -58,14 +58,11 @@ void TickerSelector::setupUI() {
 }
 
 void TickerSelector::loadDummyData() {
-    // Données simulées
+    // Données simulées - Only BTC and ETH
     struct CoinEntry { QString sym; QString price; QString chg; QString fund; QString vol; QString oi; };
     QList<CoinEntry> data = {
-        {"SOL/USDC", "136.72", "-5.16 / -3.64%", "0.0100%", "304M USDC", "426M"},
-        {"TSLA/USDC", "431.39", "+3.62 / +0.85%", "0.0693%", "9.8M USDC", "8.0M"},
-        {"SUI/USDC", "1.4988", "-0.05 / -3.85%", "0.0100%", "7.6M USDC", "19M"},
-        {"HYPE/USDC", "35.515", "+0.08 / +0.24%", "--", "92.2M USDC", "--"},
-        {"BTC/USDC", "96500.00", "+1200 / +1.20%", "0.0100%", "1.2B USDC", "5.5B"}
+        {"BTC/USD", "48500.00", "+1200 / +2.54%", "0.0100%", "1.2B USD", "5.5B"},
+        {"ETH/USD", "2850.00", "+45.00 / +1.60%", "0.0100%", "650M USD", "2.1B"}
     };
 
     tickerTable->setRowCount(data.size());
@@ -148,7 +145,7 @@ void TickerPlaceholder::setupUI() {
     logo->setFixedSize(20, 20);
     logo->setStyleSheet("background-color: #7df2d5; border-radius: 10px; border: none;");
 
-    symbolButton = new QPushButton("HYPE/USDC");
+    symbolButton = new QPushButton("BTC/USD");
     symbolButton->setCursor(Qt::PointingHandCursor);
     symbolButton->setStyleSheet(
         "QPushButton { color: white; font-size: 18px; font-weight: bold; border: none; background: transparent; text-align: left; }"
@@ -176,13 +173,13 @@ void TickerPlaceholder::setupUI() {
 
     // --- Section Stats (Avec passage de référence pour les labels) ---
     // Price
-    mainLayout->addWidget(createStatWidget("Price", "35,515", "#f6465d", &priceLabel));
+    mainLayout->addWidget(createStatWidget("Price", "48,500.00", "#0ecb81", &priceLabel));
     // Change
-    mainLayout->addWidget(createStatWidget("24h Change", "+0,084 / +0,24%", "#0ecb81", &changeLabel));
+    mainLayout->addWidget(createStatWidget("24h Change", "+1,200 / +2.54%", "#0ecb81", &changeLabel));
     // Volume
-    mainLayout->addWidget(createStatWidget("24h Volume", "92 218 791 USDC", "white", &volumeLabel));
+    mainLayout->addWidget(createStatWidget("24h Volume", "1.2B USD", "white", &volumeLabel));
     // Cap
-    mainLayout->addWidget(createStatWidget("Market Cap", "12 043 025 USDC", "white", &capLabel));
+    mainLayout->addWidget(createStatWidget("Market Cap", "950B USD", "white", &capLabel));
 
     mainLayout->addStretch();
 
@@ -249,4 +246,8 @@ void TickerPlaceholder::updateTickerDisplay(const TickerData &data) {
     QString styleTemplate = "color: %1; font-size: 13px; font-weight: bold; border: none;";
     priceLabel->setStyleSheet(styleTemplate.arg(color));
     changeLabel->setStyleSheet(styleTemplate.arg(color));
+
+    // 3. Emit signal for chart update - extract base symbol (e.g., "BTC/USD" -> "BTC")
+    QString cleanSymbol = data.symbol.split("/").first();
+    emit tickerChanged(cleanSymbol);
 }

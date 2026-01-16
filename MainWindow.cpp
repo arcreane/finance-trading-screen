@@ -69,6 +69,11 @@ void MainWindow::setupUi() {
   ChartWidget *chartWidget = new ChartWidget();
   z2l->addWidget(chartWidget);
 
+  // Connect ticker selection to chart update
+  connect(tickerWidget, &TickerPlaceholder::tickerChanged, chartWidget, [chartWidget](const QString &symbol) {
+      chartWidget->loadData(symbol, "Daily");
+  });
+
   greenLayout->addWidget(zone2, 1); // Expands to fill remaining Green space
 
   // Container PINK
@@ -89,6 +94,9 @@ void MainWindow::setupUi() {
   OrderBook *orderBook = new OrderBook(zone3);
   z3l->addWidget(orderBook);
   pinkLayout->addWidget(zone3, 1); // Zone 3 takes 25% of Pink width
+
+  // Connect ticker selection to orderbook update
+  connect(tickerWidget, &TickerPlaceholder::tickerChanged, orderBook, &OrderBook::setSymbol);
 
   yellowLayout->addWidget(pinkContainer, 3); // Pink takes 75% of Yellow height
 

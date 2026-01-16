@@ -10,7 +10,7 @@
 
 using json = nlohmann::json;
 
-OrderBook::OrderBook(QWidget *parent) : QWidget(parent), currentFileIndex(0) {
+OrderBook::OrderBook(QWidget *parent) : QWidget(parent), currentFileIndex(0), m_currentSymbol("BTC") {
     setupUi();
     
     // Initialize simulation timer
@@ -81,8 +81,16 @@ void OrderBook::setupUi() {
 
 void OrderBook::updateOrderBook() {
     currentFileIndex = (currentFileIndex % 3) + 1;
-    std::string filename = "orderbook_" + std::to_string(currentFileIndex) + ".json";
+    std::string filename = QString("orderbook_%1_%2.json").arg(m_currentSymbol).arg(currentFileIndex).toStdString();
     loadData(filename);
+}
+
+void OrderBook::setSymbol(const QString& symbol) {
+    if (m_currentSymbol != symbol) {
+        m_currentSymbol = symbol;
+        currentFileIndex = 0; // Reset to start fresh
+        updateOrderBook();
+    }
 }
 
 void OrderBook::loadData(const std::string& filename) {
