@@ -377,27 +377,29 @@ bool ChartWidget::eventFilter(QObject *watched, QEvent *event) {
                 QPoint delta = mouseEvent->pos() - m_lastMousePos;
                 
                 if (m_dragMode == DragMode::Pan) {
-                    // Pan affecting Main Chart (which syncs RSI)
-                    chart->scroll(-delta.x(), 0); // Horizontal pan only via axis sync
+                    // Scroll the chart under the mouse (horizontal)
+                    targetChart->scroll(-delta.x(), 0);
                     
-                    // Vertical pan only if on main chart and dragging vertically
-                     if (targetChart == chart) {
-                        chart->scroll(0, delta.y());
-                     }
+                    // Vertical pan only if on main chart
+                    if (targetChart == chart) {
+                        targetChart->scroll(0, delta.y());
+                    }
                 } 
                 else if (m_dragMode == DragMode::ZoomX) {
                     double sensitivity = 0.005; 
                     double factor = std::pow(1.0 - sensitivity, delta.x());
                     
-                    if (axisX) {
-                        qint64 min = axisX->min().toMSecsSinceEpoch();
-                        qint64 max = axisX->max().toMSecsSinceEpoch();
+                    // Use the axis of the target chart
+                    QDateTimeAxis *targetAxisX = (targetChart == chart) ? axisX : rsiAxisX;
+                    if (targetAxisX) {
+                        qint64 min = targetAxisX->min().toMSecsSinceEpoch();
+                        qint64 max = targetAxisX->max().toMSecsSinceEpoch();
                         qint64 center = (min + max) / 2;
                         qint64 span = max - min;
                         qint64 newSpan = span * factor;
                         if (newSpan < 60000) newSpan = 60000;
-                        axisX->setRange(QDateTime::fromMSecsSinceEpoch(center - newSpan/2), 
-                                        QDateTime::fromMSecsSinceEpoch(center + newSpan/2));
+                        targetAxisX->setRange(QDateTime::fromMSecsSinceEpoch(center - newSpan/2), 
+                                              QDateTime::fromMSecsSinceEpoch(center + newSpan/2));
                     }
                 } 
                 else if (m_dragMode == DragMode::ZoomY) {
@@ -587,17 +589,29 @@ void ChartWidget::setupRsiChart() {
     // Actually, we need to populate them whenever data loads, but they are just straight lines.
     // We can just add two points at min/max timestamp every time data loads.
 
-    // Synchronize X Axis (Main -> RSI)
-    connect(axisX, SIGNAL(minChanged(double)), this, SLOT(onMinChanged(double)));
-    connect(axisX, SIGNAL(maxChanged(double)), this, SLOT(onMaxChanged(double)));
+    // Bidirectional X Axis Synchronization
+    connect(axisX, &QDateTimeAxis::rangeChanged, this, &ChartWidget::syncRsiToMain);
+    connect(rsiAxisX, &QDateTimeAxis::rangeChanged, this, &ChartWidget::syncMainToRsi);
 }
 
-void ChartWidget::onMinChanged(double min) {
-    if (rsiAxisX) rsiAxisX->setMin(QDateTime::fromMSecsSinceEpoch((qint64)min));
+void ChartWidget::syncRsiToMain() {
+    if (!rsiAxisX || !axisX) return;
+    // Prevent infinite loop: only update if different
+    if (rsiAxisX->min() != axisX->min() || rsiAxisX->max() != axisX->max()) {
+        rsiAxisX->blockSignals(true);
+        rsiAxisX->setRange(axisX->min(), axisX->max());
+        rsiAxisX->blockSignals(false);
+    }
 }
 
-void ChartWidget::onMaxChanged(double max) {
-    if (rsiAxisX) rsiAxisX->setMax(QDateTime::fromMSecsSinceEpoch((qint64)max));
+void ChartWidget::syncMainToRsi() {
+    if (!axisX || !rsiAxisX) return;
+    // Prevent infinite loop: only update if different
+    if (axisX->min() != rsiAxisX->min() || axisX->max() != rsiAxisX->max()) {
+        axisX->blockSignals(true);
+        axisX->setRange(rsiAxisX->min(), rsiAxisX->max());
+        axisX->blockSignals(false);
+    }
 }
 
 void ChartWidget::calculateRSI(const QList<double> &closePrices, const QList<qint64> &timestamps, int period) {

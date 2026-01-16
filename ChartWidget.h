@@ -60,8 +60,10 @@ private:
   bool connectToDatabase();
   void updateCrosshair(const QPointF &point);
   void calculateRSI(const QList<double> &closePrices, const QList<qint64> &timestamps, int period = 14);
-  void onMinChanged(double min);
-  void onMaxChanged(double max);
+  
+  // Bidirectional axis sync slots
+  void syncRsiToMain();
+  void syncMainToRsi();
 };
 
 #endif // CHARTWIDGET_H
