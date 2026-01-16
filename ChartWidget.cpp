@@ -35,9 +35,9 @@ void ChartWidget::setupChart() {
   chart->setTitle("");
   
   // Background Colors
-  chart->setBackgroundBrush(QBrush(QColor("#161616")));
-  chart->setPlotAreaBackgroundBrush(QBrush(QColor("#161616")));
-  chart->setPlotAreaBackgroundVisible(true);
+  chart->setBackgroundBrush(Qt::NoBrush); // Transparent to show View background
+  chart->setPlotAreaBackgroundBrush(Qt::NoBrush);
+  chart->setPlotAreaBackgroundVisible(false);
   
   // Title Color
   chart->setTitleBrush(QBrush(QColor("#d1d4dc")));
@@ -75,6 +75,8 @@ void ChartWidget::setupChart() {
   maPen.setWidth(2);
   maSeries->setPen(maPen);
   chart->addSeries(maSeries);
+  
+
 
   // --- VOLUME REMOVED TO PREVENT CRASH WITH QDATETIMEAXIS ---
   // QBarSeries requires QBarCategoryAxis, inconsistent with QDateTimeAxis for candles.
@@ -89,7 +91,8 @@ void ChartWidget::setupChart() {
   axisX->setFormat("dd-MM");
   axisX->setLabelsColor(labelColor);
   axisX->setLabelsFont(axisFont);
-  axisX->setGridLineColor(gridColor);
+  axisX->setGridLineVisible(true);
+  axisX->setGridLinePen(QPen(gridColor, 1, Qt::SolidLine));
   axisX->setLineVisible(false);
   chart->addAxis(axisX, Qt::AlignBottom);
   
@@ -100,7 +103,8 @@ void ChartWidget::setupChart() {
   axisY = new QValueAxis();
   axisY->setLabelsColor(labelColor);
   axisY->setLabelsFont(axisFont);
-  axisY->setGridLineColor(gridColor);
+  axisY->setGridLineVisible(true);
+  axisY->setGridLinePen(QPen(gridColor, 1, Qt::SolidLine));
   axisY->setLineVisible(false);
   chart->addAxis(axisY, Qt::AlignRight);
   
@@ -284,25 +288,16 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
     calculateRSI(closePricesForRsi, timestampsForRsi);
     
     // Update RSI limits lines (30/70)
-    // We just need them to span the entire X range
-    
-    QList<QAbstractSeries *> rsiCharts = rsiChart->series();
-    if (rsiCharts.size() >= 3) { // 0: RSI, 1: Upper, 2: Lower
-        QLineSeries *upper = static_cast<QLineSeries*>(rsiCharts[1]);
-        QLineSeries *lower = static_cast<QLineSeries*>(rsiCharts[2]);
-        upper->clear();
-        lower->clear();
-        upper->append(minTimestamp, 70);
-        upper->append(maxTimestamp, 70);
-        lower->append(minTimestamp, 30);
-        lower->append(maxTimestamp, 30);
+    if (m_rsiUpperLimit && m_rsiLowerLimit) {
+        m_rsiUpperLimit->clear();
+        m_rsiLowerLimit->clear();
+        m_rsiUpperLimit->append(minTimestamp, 70);
+        m_rsiUpperLimit->append(maxTimestamp, 70);
+        m_rsiLowerLimit->append(minTimestamp, 30);
+        m_rsiLowerLimit->append(maxTimestamp, 30);
     }
 
-    qDebug() << "AxisX Set.";
-
-    qDebug() << "Setting AxisY Range...";
     axisY->setRange(minPrice * 0.99, maxPrice * 1.01);
-    qDebug() << "AxisY Set.";
     
     // Volume logic removed
   } else {
@@ -524,9 +519,9 @@ void ChartWidget::updateCrosshair(const QPointF &pos) {
 void ChartWidget::setupRsiChart() {
     rsiChart = new QChart();
     rsiChart->setTitle("");
-    rsiChart->setBackgroundBrush(QBrush(QColor("#161616")));
-    rsiChart->setPlotAreaBackgroundBrush(QBrush(QColor("#161616")));
-    rsiChart->setPlotAreaBackgroundVisible(true);
+    rsiChart->setBackgroundBrush(Qt::NoBrush);
+    rsiChart->setPlotAreaBackgroundBrush(Qt::NoBrush);
+    rsiChart->setPlotAreaBackgroundVisible(false);
     rsiChart->legend()->setVisible(false);
     rsiChart->setMargins(QMargins(0, 0, 0, 0));
     rsiChart->layout()->setContentsMargins(0, 0, 0, 0);
@@ -546,7 +541,7 @@ void ChartWidget::setupRsiChart() {
     rsiPen.setWidth(2);
     rsiSeries->setPen(rsiPen);
     rsiChart->addSeries(rsiSeries);
-
+    
     // Axes
     auto axisFont = QFont("Segoe UI", 9);
     QColor gridColor("#2a2e39");
@@ -555,39 +550,37 @@ void ChartWidget::setupRsiChart() {
     rsiAxisX = new QDateTimeAxis();
     rsiAxisX->setFormat("dd-MM");
     rsiAxisX->setLabelsVisible(false); // Hide X labels for RSI as it aligns with main chart
-    rsiAxisX->setGridLineColor(gridColor);
+    rsiAxisX->setGridLineVisible(true);
+    rsiAxisX->setGridLinePen(QPen(gridColor, 1, Qt::SolidLine));
     rsiAxisX->setLineVisible(false);
     rsiChart->addAxis(rsiAxisX, Qt::AlignBottom);
     rsiSeries->attachAxis(rsiAxisX);
 
     rsiAxisY = new QValueAxis();
     rsiAxisY->setRange(0, 100);
-    rsiAxisY->setTickCount(3); // 0, 50, 100 or close to it
+    rsiAxisY->setTickCount(3); // 0, 50, 100
     rsiAxisY->setLabelFormat("%.0f");
     rsiAxisY->setLabelsColor(labelColor);
     rsiAxisY->setLabelsFont(axisFont);
-    rsiAxisY->setGridLineColor(gridColor);
+    rsiAxisY->setGridLineVisible(false); // Keep RSI Y grid disabled, use limit lines instead
     rsiAxisY->setLineVisible(false);
     rsiChart->addAxis(rsiAxisY, Qt::AlignRight);
     rsiSeries->attachAxis(rsiAxisY);
 
-    // Add 30 and 70 lines
-    QLineSeries *upperLine = new QLineSeries();
+    // Add 30 and 70 limit lines
     QPen limitPen(QColor("#787b86"), 1, Qt::DashLine);
-    upperLine->setPen(limitPen);
-    rsiChart->addSeries(upperLine);
-    upperLine->attachAxis(rsiAxisX);
-    upperLine->attachAxis(rsiAxisY); // Correct axis
     
-    QLineSeries *lowerLine = new QLineSeries();
-    lowerLine->setPen(limitPen);
-    rsiChart->addSeries(lowerLine);
-    lowerLine->attachAxis(rsiAxisX);
-    lowerLine->attachAxis(rsiAxisY);
-
-    // Store pointers if we need to update them, or just let them stay static
-    // Actually, we need to populate them whenever data loads, but they are just straight lines.
-    // We can just add two points at min/max timestamp every time data loads.
+    m_rsiUpperLimit = new QLineSeries();
+    m_rsiUpperLimit->setPen(limitPen);
+    rsiChart->addSeries(m_rsiUpperLimit);
+    m_rsiUpperLimit->attachAxis(rsiAxisX);
+    m_rsiUpperLimit->attachAxis(rsiAxisY);
+    
+    m_rsiLowerLimit = new QLineSeries();
+    m_rsiLowerLimit->setPen(limitPen);
+    rsiChart->addSeries(m_rsiLowerLimit);
+    m_rsiLowerLimit->attachAxis(rsiAxisX);
+    m_rsiLowerLimit->attachAxis(rsiAxisY);
 
     // Bidirectional X Axis Synchronization
     connect(axisX, &QDateTimeAxis::rangeChanged, this, &ChartWidget::syncRsiToMain);
@@ -654,3 +647,4 @@ void ChartWidget::calculateRSI(const QList<double> &closePrices, const QList<qin
         }
     }
 }
+

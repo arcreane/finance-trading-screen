@@ -64,6 +64,10 @@ private:
   // Bidirectional axis sync slots
   void syncRsiToMain();
   void syncMainToRsi();
+
+  // RSI Limit Lines (30 and 70)
+  QLineSeries *m_rsiUpperLimit; // 70
+  QLineSeries *m_rsiLowerLimit; // 30
 };
 
 #endif // CHARTWIDGET_H
