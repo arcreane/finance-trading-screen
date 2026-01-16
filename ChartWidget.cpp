@@ -1,4 +1,5 @@
 #include "ChartWidget.h"
+#include <QtCharts/QAbstractAxis>
 #include <QDebug>
 #include <QMessageBox>
 #include <QVBoxLayout>
@@ -6,11 +7,22 @@
 #include <cmath>
 
 ChartWidget::ChartWidget(QWidget *parent) : QWidget(parent) {
+  // Main layout
+  QVBoxLayout *layout = new QVBoxLayout(this);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+
   setupChart();
+  setupRsiChart();
+
+  // Add widgets to layout
+  layout->addWidget(chartView, 3); // Main chart takes 75%
+  layout->addWidget(rsiChartView, 1); // RSI takes 25%
 
   // Enable mouse tracking for crosshair
   setMouseTracking(true);
   chartView->setMouseTracking(true);
+  rsiChartView->setMouseTracking(true);
 
   // Auto-load BTC data as requested
   loadData("BTC", "Daily");
@@ -45,9 +57,8 @@ void ChartWidget::setupChart() {
   chartView->installEventFilter(this);
   chartView->viewport()->installEventFilter(this);
 
-  QVBoxLayout *layout = new QVBoxLayout(this);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->addWidget(chartView);
+  // Layout creation moved to constructor
+
 
   // --- 1. CANDLESTICK SERIES ---
   series = new QCandlestickSeries();
@@ -248,6 +259,45 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
     qDebug() << "Setting AxisX Range...";
     axisX->setRange(QDateTime::fromMSecsSinceEpoch(minTimestamp),
                     QDateTime::fromMSecsSinceEpoch(maxTimestamp));
+    
+    // Sync RSI Axis
+    rsiAxisX->setRange(QDateTime::fromMSecsSinceEpoch(minTimestamp),
+                       QDateTime::fromMSecsSinceEpoch(maxTimestamp));
+                       
+    // Calculate RSI
+    QList<qint64> timestamps;
+    // We need to reconstruct the list of timestamps matching 'closes'
+    // Since we appended 'closes' in the loop, let's verify if we tracked timestamps properly.
+    // The current loop implementation pushes to 'closes' one by one.
+    // We should capture timestamps in a list parallel to 'closes'.
+    
+    // Let's iterate series->sets() to get consistent data for RSI
+    QList<double> closePricesForRsi;
+    QList<qint64> timestampsForRsi;
+    
+    for (int i = 0; i < series->count(); ++i) {
+        QCandlestickSet *set = series->sets().at(i);
+        closePricesForRsi.append(set->close());
+        timestampsForRsi.append((qint64)set->timestamp());
+    }
+    
+    calculateRSI(closePricesForRsi, timestampsForRsi);
+    
+    // Update RSI limits lines (30/70)
+    // We just need them to span the entire X range
+    
+    QList<QAbstractSeries *> rsiCharts = rsiChart->series();
+    if (rsiCharts.size() >= 3) { // 0: RSI, 1: Upper, 2: Lower
+        QLineSeries *upper = static_cast<QLineSeries*>(rsiCharts[1]);
+        QLineSeries *lower = static_cast<QLineSeries*>(rsiCharts[2]);
+        upper->clear();
+        lower->clear();
+        upper->append(minTimestamp, 70);
+        upper->append(maxTimestamp, 70);
+        lower->append(minTimestamp, 30);
+        lower->append(maxTimestamp, 30);
+    }
+
     qDebug() << "AxisX Set.";
 
     qDebug() << "Setting AxisY Range...";
@@ -261,16 +311,29 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
 }
 
 bool ChartWidget::eventFilter(QObject *watched, QEvent *event) {
-    if (watched == chartView || watched == chartView->viewport()) {
+    if (watched == chartView || watched == chartView->viewport() || 
+        watched == rsiChartView || watched == rsiChartView->viewport()) {
+        
+        QChartView *targetView = nullptr;
+        QChart *targetChart = nullptr;
+        
+        if (watched == chartView || watched == chartView->viewport()) {
+            targetView = chartView;
+            targetChart = chart;
+        } else {
+            targetView = rsiChartView;
+            targetChart = rsiChart;
+        }
+
         if (event->type() == QEvent::MouseButtonPress) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
             if (mouseEvent->button() == Qt::LeftButton) {
                 m_lastMousePos = mouseEvent->pos();
                 m_isDragging = true;
                 
-                QPointF scenePos = chartView->mapToScene(mouseEvent->pos());
-                QPointF chartPos = chart->mapFromScene(scenePos);
-                QRectF plotArea = chart->plotArea();
+                QPointF scenePos = targetView->mapToScene(mouseEvent->pos());
+                QPointF chartPos = targetChart->mapFromScene(scenePos);
+                QRectF plotArea = targetChart->plotArea();
                 
                 if (plotArea.contains(chartPos)) {
                     m_dragMode = DragMode::Pan;
@@ -283,8 +346,13 @@ bool ChartWidget::eventFilter(QObject *watched, QEvent *event) {
                          m_dragMode = DragMode::ZoomX;
                          setCursor(Qt::SizeHorCursor);
                     } else if (inYAxis) {
-                         m_dragMode = DragMode::ZoomY;
-                         setCursor(Qt::SizeVerCursor);
+                         // RSI Y-axis is fixed 0-100 usually, so maybe disable Y zoom on RSI
+                         if (targetChart == rsiChart) {
+                             m_dragMode = DragMode::None;
+                         } else {
+                             m_dragMode = DragMode::ZoomY;
+                             setCursor(Qt::SizeVerCursor);
+                         }
                     } else {
                          m_dragMode = DragMode::None;
                     }
@@ -309,7 +377,13 @@ bool ChartWidget::eventFilter(QObject *watched, QEvent *event) {
                 QPoint delta = mouseEvent->pos() - m_lastMousePos;
                 
                 if (m_dragMode == DragMode::Pan) {
-                    chart->scroll(-delta.x(), delta.y());
+                    // Pan affecting Main Chart (which syncs RSI)
+                    chart->scroll(-delta.x(), 0); // Horizontal pan only via axis sync
+                    
+                    // Vertical pan only if on main chart and dragging vertically
+                     if (targetChart == chart) {
+                        chart->scroll(0, delta.y());
+                     }
                 } 
                 else if (m_dragMode == DragMode::ZoomX) {
                     double sensitivity = 0.005; 
@@ -330,7 +404,7 @@ bool ChartWidget::eventFilter(QObject *watched, QEvent *event) {
                     double sensitivity = 0.005;
                     double factor = std::pow(1.0 + sensitivity, delta.y());
                     
-                    if (axisY) {
+                    if (axisY && targetChart == chart) {
                         double min = axisY->min();
                         double max = axisY->max();
                         double center = (min + max) / 2;
@@ -343,56 +417,58 @@ bool ChartWidget::eventFilter(QObject *watched, QEvent *event) {
                 m_lastMousePos = mouseEvent->pos();
             }
 
-            // Crosshair & Info Logic
-            // Map strictly to plot area
-            QPointF scenePos = chartView->mapToScene(mouseEvent->pos());
-            QPointF chartPos = chart->mapFromScene(scenePos);
+            // Crosshair & Info Logic (Update ONLY if on Main Chart for now)
+            if (targetChart == chart) {
+                QPointF scenePos = chartView->mapToScene(mouseEvent->pos());
+                QPointF chartPos = chart->mapFromScene(scenePos);
 
-            if (chart->plotArea().contains(chartPos)) {
-                crosshairX->setVisible(true);
-                crosshairY->setVisible(true);
-                
-                updateCrosshair(chartPos);
+                if (chart->plotArea().contains(chartPos)) {
+                    crosshairX->setVisible(true);
+                    crosshairY->setVisible(true);
+                    
+                    updateCrosshair(chartPos);
 
-                // Update Info Label
-                if (series->count() > 0) {
-                     QPointF valuePoint = chart->mapToValue(chartPos);
-                     qint64 timestamp = (qint64)valuePoint.x();
-                     
-                     QCandlestickSet *closestSet = nullptr;
-                     qint64 minDiff = std::numeric_limits<qint64>::max();
+                    // Update Info Label
+                    if (series->count() > 0) {
+                         QPointF valuePoint = chart->mapToValue(chartPos);
+                         qint64 timestamp = (qint64)valuePoint.x();
+                         
+                         QCandlestickSet *closestSet = nullptr;
+                         qint64 minDiff = std::numeric_limits<qint64>::max();
 
-                     for (auto set : series->sets()) {
-                         qint64 diff = std::abs(set->timestamp() - timestamp);
-                         if (diff < minDiff) {
-                             minDiff = diff;
-                             closestSet = set;
+                         for (auto set : series->sets()) {
+                             qint64 diff = std::abs(set->timestamp() - timestamp);
+                             if (diff < minDiff) {
+                                 minDiff = diff;
+                                 closestSet = set;
+                             }
                          }
-                     }
 
-                     if (closestSet && minDiff < 86400000) {
-                         QString info = QString("BTC | %1 | O: %2 | H: %3 | L: %4 | C: %5")
-                                            .arg(QDateTime::fromMSecsSinceEpoch(closestSet->timestamp()).toString("yyyy-MM-dd"))
-                                            .arg(closestSet->open(), 0, 'f', 2)
-                                            .arg(closestSet->high(), 0, 'f', 2)
-                                            .arg(closestSet->low(), 0, 'f', 2)
-                                            .arg(closestSet->close(), 0, 'f', 2);
-                         infoLabel->setPlainText(info);
-                         if (closestSet->close() >= closestSet->open()) {
-                              infoLabel->setDefaultTextColor(QColor("#089981"));
-                         } else {
-                              infoLabel->setDefaultTextColor(QColor("#f23645"));
+                         if (closestSet && minDiff < 86400000) {
+                             QString info = QString("BTC | %1 | O: %2 | H: %3 | L: %4 | C: %5")
+                                                .arg(QDateTime::fromMSecsSinceEpoch(closestSet->timestamp()).toString("yyyy-MM-dd"))
+                                                .arg(closestSet->open(), 0, 'f', 2)
+                                                .arg(closestSet->high(), 0, 'f', 2)
+                                                .arg(closestSet->low(), 0, 'f', 2)
+                                                .arg(closestSet->close(), 0, 'f', 2);
+                             infoLabel->setPlainText(info);
+                             if (closestSet->close() >= closestSet->open()) {
+                                  infoLabel->setDefaultTextColor(QColor("#089981"));
+                             } else {
+                                  infoLabel->setDefaultTextColor(QColor("#f23645"));
+                             }
                          }
-                     }
+                    }
+                } else {
+                    crosshairX->setVisible(false);
+                    crosshairY->setVisible(false);
                 }
-            } else {
-                crosshairX->setVisible(false);
-                crosshairY->setVisible(false);
             }
             return true;
         }
         else if (event->type() == QEvent::Wheel) {
             QWheelEvent *wheelEvent = static_cast<QWheelEvent*>(event);
+            // Apply zoom to Main Chart (which syncs RSI)
             if (wheelEvent->angleDelta().y() > 0) {
                 chart->zoomIn();
             } else {
@@ -440,5 +516,127 @@ void ChartWidget::updateCrosshair(const QPointF &pos) {
     if (vLine.length() > 0 && hLine.length() > 0) {
         crosshairX->setLine(vLine);
         crosshairY->setLine(hLine);
+    }
+}
+
+void ChartWidget::setupRsiChart() {
+    rsiChart = new QChart();
+    rsiChart->setTitle("");
+    rsiChart->setBackgroundBrush(QBrush(QColor("#161616")));
+    rsiChart->setPlotAreaBackgroundBrush(QBrush(QColor("#161616")));
+    rsiChart->setPlotAreaBackgroundVisible(true);
+    rsiChart->legend()->setVisible(false);
+    rsiChart->setMargins(QMargins(0, 0, 0, 0));
+    rsiChart->layout()->setContentsMargins(0, 0, 0, 0);
+
+    rsiChartView = new QChartView(rsiChart);
+    rsiChartView->setRenderHint(QPainter::Antialiasing);
+    rsiChartView->setBackgroundBrush(QBrush(QColor("#161616")));
+
+    // Install event filter for RSI interaction
+    rsiChartView->installEventFilter(this);
+    rsiChartView->viewport()->installEventFilter(this);
+    
+    // Series
+    rsiSeries = new QLineSeries();
+    rsiSeries->setName("RSI");
+    QPen rsiPen(QColor("#7e57c2")); 
+    rsiPen.setWidth(2);
+    rsiSeries->setPen(rsiPen);
+    rsiChart->addSeries(rsiSeries);
+
+    // Axes
+    auto axisFont = QFont("Segoe UI", 9);
+    QColor gridColor("#2a2e39");
+    QColor labelColor("#b2b5be");
+
+    rsiAxisX = new QDateTimeAxis();
+    rsiAxisX->setFormat("dd-MM");
+    rsiAxisX->setLabelsVisible(false); // Hide X labels for RSI as it aligns with main chart
+    rsiAxisX->setGridLineColor(gridColor);
+    rsiAxisX->setLineVisible(false);
+    rsiChart->addAxis(rsiAxisX, Qt::AlignBottom);
+    rsiSeries->attachAxis(rsiAxisX);
+
+    rsiAxisY = new QValueAxis();
+    rsiAxisY->setRange(0, 100);
+    rsiAxisY->setTickCount(3); // 0, 50, 100 or close to it
+    rsiAxisY->setLabelFormat("%.0f");
+    rsiAxisY->setLabelsColor(labelColor);
+    rsiAxisY->setLabelsFont(axisFont);
+    rsiAxisY->setGridLineColor(gridColor);
+    rsiAxisY->setLineVisible(false);
+    rsiChart->addAxis(rsiAxisY, Qt::AlignRight);
+    rsiSeries->attachAxis(rsiAxisY);
+
+    // Add 30 and 70 lines
+    QLineSeries *upperLine = new QLineSeries();
+    QPen limitPen(QColor("#787b86"), 1, Qt::DashLine);
+    upperLine->setPen(limitPen);
+    rsiChart->addSeries(upperLine);
+    upperLine->attachAxis(rsiAxisX);
+    upperLine->attachAxis(rsiAxisY); // Correct axis
+    
+    QLineSeries *lowerLine = new QLineSeries();
+    lowerLine->setPen(limitPen);
+    rsiChart->addSeries(lowerLine);
+    lowerLine->attachAxis(rsiAxisX);
+    lowerLine->attachAxis(rsiAxisY);
+
+    // Store pointers if we need to update them, or just let them stay static
+    // Actually, we need to populate them whenever data loads, but they are just straight lines.
+    // We can just add two points at min/max timestamp every time data loads.
+
+    // Synchronize X Axis (Main -> RSI)
+    connect(axisX, SIGNAL(minChanged(double)), this, SLOT(onMinChanged(double)));
+    connect(axisX, SIGNAL(maxChanged(double)), this, SLOT(onMaxChanged(double)));
+}
+
+void ChartWidget::onMinChanged(double min) {
+    if (rsiAxisX) rsiAxisX->setMin(QDateTime::fromMSecsSinceEpoch((qint64)min));
+}
+
+void ChartWidget::onMaxChanged(double max) {
+    if (rsiAxisX) rsiAxisX->setMax(QDateTime::fromMSecsSinceEpoch((qint64)max));
+}
+
+void ChartWidget::calculateRSI(const QList<double> &closePrices, const QList<qint64> &timestamps, int period) {
+    rsiSeries->clear();
+    
+    if (closePrices.size() < period + 1) return;
+
+    QList<double> gains;
+    QList<double> losses;
+    
+    // Initial calculation
+    double avgGain = 0;
+    double avgLoss = 0;
+
+    for (int i = 1; i <= period; ++i) {
+        double change = closePrices[i] - closePrices[i - 1];
+        if (change > 0) avgGain += change;
+        else avgLoss += std::abs(change);
+    }
+    
+    avgGain /= period;
+    avgLoss /= period;
+
+    // RSI Formula: RSI = 100 - (100 / (1 + RS))
+    // RS = Average Gain / Average Loss
+
+    for (int i = period; i < closePrices.size(); ++i) {
+        double rs = (avgLoss == 0) ? 100 : (avgGain / avgLoss);
+        double rsi = (avgLoss == 0) ? 100 : (100 - (100 / (1 + rs)));
+        
+        rsiSeries->append(timestamps[i], rsi);
+
+        if (i < closePrices.size() - 1) {
+             double change = closePrices[i + 1] - closePrices[i];
+             double gain = (change > 0) ? change : 0;
+             double loss = (change < 0) ? std::abs(change) : 0;
+             
+             avgGain = (avgGain * (period - 1) + gain) / period;
+             avgLoss = (avgLoss * (period - 1) + loss) / period;
+        }
     }
 }

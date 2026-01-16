@@ -48,9 +48,20 @@ private:
   bool m_isDragging = false;
   QPoint m_lastMousePos;
 
+  // RSI Components
+  QChartView *rsiChartView;
+  QChart *rsiChart;
+  QLineSeries *rsiSeries;
+  QDateTimeAxis *rsiAxisX;
+  QValueAxis *rsiAxisY;
+
   void setupChart();
+  void setupRsiChart();
   bool connectToDatabase();
   void updateCrosshair(const QPointF &point);
+  void calculateRSI(const QList<double> &closePrices, const QList<qint64> &timestamps, int period = 14);
+  void onMinChanged(double min);
+  void onMaxChanged(double max);
 };
 
 #endif // CHARTWIDGET_H
