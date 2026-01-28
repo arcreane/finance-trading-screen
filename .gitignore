@@ -185,5 +185,4 @@ Makefile.Release
 CMakeLists.txt
 
 #python files
-insert_btc_data.py
 verify_data.py
