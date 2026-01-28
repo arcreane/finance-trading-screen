@@ -1,3 +1,14 @@
+/**
+ * @file orderbook.h
+ * @brief Order book widget displaying bid/ask depth.
+ * 
+ * Displays the order book with:
+ * - Asks (sell orders) sorted by price
+ * - Bids (buy orders) sorted by price
+ * - Visual depth bars showing cumulative volume
+ * - Spread calculation and fair price display
+ */
+
 #ifndef ORDERBOOK_H
 #define ORDERBOOK_H
 
@@ -10,6 +21,10 @@
 #include <vector>
 #include "nlohmann/json.hpp"
 
+/**
+ * @class DepthDelegate
+ * @brief Custom delegate for rendering depth bars behind order book rows.
+ */
 // Delegate for drawing depth bars
 class DepthDelegate : public QStyledItemDelegate {
 public:

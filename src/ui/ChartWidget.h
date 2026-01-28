@@ -1,3 +1,14 @@
+/**
+ * @file ChartWidget.h
+ * @brief Candlestick chart widget with RSI indicator.
+ * 
+ * Displays financial data as a Japanese candlestick chart with:
+ * - SMA 20 moving average overlay
+ * - RSI (Relative Strength Index) sub-chart
+ * - Interactive crosshair and OHLC info display
+ * - Pan and zoom functionality
+ */
+
 #ifndef CHARTWIDGET_H
 #define CHARTWIDGET_H
 
@@ -5,6 +16,10 @@
 #include <QtCharts>
 #include <QtSql>
 
+/**
+ * @class ChartWidget
+ * @brief Interactive candlestick chart with technical indicators.
+ */
 class ChartWidget : public QWidget {
   Q_OBJECT
 

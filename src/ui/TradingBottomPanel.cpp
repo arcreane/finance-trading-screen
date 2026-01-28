@@ -270,27 +270,12 @@ QWidget *TradingBottomPanel::createAssetsTab() {
 
   int row = table->rowCount();
   table->insertRow(row);
-  table->setItem(row, 0, new QTableWidgetItem("USDF APY up to 10.50%"));
-  table->setItem(row, 1, new QTableWidgetItem("0.00000000"));
-  table->setItem(row, 2, new QTableWidgetItem("0.00000000"));
-  table->setItem(row, 3, new QTableWidgetItem("0.00000000"));
-  table->setItem(row, 4, new QTableWidgetItem("0.00000000 USD"));
-
-  row = table->rowCount();
-  table->insertRow(row);
-  table->setItem(row, 0, new QTableWidgetItem("ASBNB APY 10.85%"));
-  table->setItem(row, 1, new QTableWidgetItem("0.00000000"));
-  table->setItem(row, 2, new QTableWidgetItem("0.00000000"));
-  table->setItem(row, 3, new QTableWidgetItem("0.00000000"));
-  table->setItem(row, 4, new QTableWidgetItem("0.00000000 USD"));
-
-  row = table->rowCount();
-  table->insertRow(row);
   table->setItem(row, 0, new QTableWidgetItem("USDC"));
   table->setItem(row, 1, new QTableWidgetItem("10.00000000"));
   table->setItem(row, 2, new QTableWidgetItem("0.00000000"));
   table->setItem(row, 3, new QTableWidgetItem("10.00000000"));
   table->setItem(row, 4, new QTableWidgetItem("9.99729970 USD"));
+
 
   QWidget *container = new QWidget();
   container->setStyleSheet("background-color: #161616;");

@@ -81,7 +81,7 @@ void OrderBook::setupUi() {
 
 void OrderBook::updateOrderBook() {
     currentFileIndex = (currentFileIndex % 3) + 1;
-    std::string filename = QString("orderbook_%1_%2.json").arg(m_currentSymbol).arg(currentFileIndex).toStdString();
+    std::string filename = QString("data/orderbook_%1_%2.json").arg(m_currentSymbol).arg(currentFileIndex).toStdString();
     loadData(filename);
 }
 

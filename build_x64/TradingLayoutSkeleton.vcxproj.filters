@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\build_x64\TradingLayoutSkeleton_autogen\mocs_compilation_Debug.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\MainWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\TickerPlaceholder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\ChartWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\core\orderbook.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\TradingBottomPanel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\OrderEntryPanel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\build_x64\TradingLayoutSkeleton_autogen\mocs_compilation_Release.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\build_x64\TradingLayoutSkeleton_autogen\mocs_compilation_MinSizeRel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\build_x64\TradingLayoutSkeleton_autogen\mocs_compilation_RelWithDebInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\MainWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\TickerPlaceholder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\ChartWidget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\core\orderbook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\TradingBottomPanel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\src\ui\OrderEntryPanel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\louka\Desktop\TradingSceen YOLIN\finance-trading-screen\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{F7FBE60A-E501-3614-8E6C-176695835EF2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{CF5D04C5-67C7-3A66-A409-671E78AB1667}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

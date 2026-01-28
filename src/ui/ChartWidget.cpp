@@ -137,7 +137,7 @@ void ChartWidget::setupChart() {
 
 bool ChartWidget::connectToDatabase() {
   QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-  db.setDatabaseName("backtest.db");
+  db.setDatabaseName("data/backtest.db");
 
   if (!db.open()) {
     qDebug() << "Error: connection with database failed";
