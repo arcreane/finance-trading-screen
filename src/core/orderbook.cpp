@@ -30,9 +30,7 @@ void OrderBook::setupUi() {
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    // Headers handled by asksTable directly for perfect alignment
-    
-    // Asks Table (Top)
+    // Asks Table (Top) - Expands to fill available space
     asksTable = new QTableWidget(this);
     asksTable->setColumnCount(3);
     asksTable->setHorizontalHeaderLabels({"Price", "Amount", "Total"});
@@ -46,37 +44,36 @@ void OrderBook::setupUi() {
     );
 
     asksTable->verticalHeader()->setVisible(false);
+    asksTable->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch); // Rows expand to fill
     asksTable->setShowGrid(false);
     asksTable->setSelectionMode(QAbstractItemView::NoSelection);
     asksTable->setFocusPolicy(Qt::NoFocus);
     asksTable->setStyleSheet("background-color: #161616; border: none;");
     asksTable->setItemDelegate(new DepthDelegate(asksTable));
-    asksTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); 
-    mainLayout->addWidget(asksTable, 0); 
+    asksTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    mainLayout->addWidget(asksTable, 1); // Stretch factor 1
 
 
-    // Spread Label (Middle)
+    // Spread Label (Middle) - Fixed height
     spreadLabel = new QLabel(this);
     spreadLabel->setAlignment(Qt::AlignCenter);
     spreadLabel->setStyleSheet("color: #aaa; font-size: 10pt; padding: 5px; background-color: #202020; font-family: Consolas, monospace;");
-    mainLayout->addWidget(spreadLabel);
+    mainLayout->addWidget(spreadLabel, 0); // No stretch
 
-    // Bids Table (Bottom)
+    // Bids Table (Bottom) - Expands to fill available space
     bidsTable = new QTableWidget(this);
     bidsTable->setColumnCount(3);
     bidsTable->horizontalHeader()->setVisible(false);
     bidsTable->verticalHeader()->setVisible(false);
+    bidsTable->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch); // Rows expand to fill
     bidsTable->setShowGrid(false);
     bidsTable->setSelectionMode(QAbstractItemView::NoSelection);
     bidsTable->setFocusPolicy(Qt::NoFocus);
     bidsTable->setStyleSheet("background-color: #161616; border: none;");
     bidsTable->setItemDelegate(new DepthDelegate(bidsTable));
     bidsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    bidsTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // Fixed height to content
-    mainLayout->addWidget(bidsTable, 0); // No stretch for table itself
-
-    // Spacer after bids to center the orderbook vertically
-    mainLayout->addStretch(1);
+    bidsTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    mainLayout->addWidget(bidsTable, 1); // Stretch factor 1
 }
 
 void OrderBook::updateOrderBook() {
@@ -246,26 +243,8 @@ void OrderBook::populateTable(QTableWidget* table, const std::vector<nlohmann::j
         row++;
     }
 
-    // Resize table height to fit content (if it's the Asks table or we want tight layout)
-    // Especially important for Asks table to let the spacer above it work.
-    table->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff); // Disable scrollbar to force full display logic
-    
-    if (table->rowCount() > 0) {
-        int height = 0;
-        for (int i=0; i<table->rowCount(); ++i) height += table->rowHeight(i);
-        
-        // Add header height if visible
-        if (table->horizontalHeader()->isVisible()) {
-            height += table->horizontalHeader()->height();
-        }
-        
-        // Add a small buffer for borders/margins just in case (e.g. 2px)
-        height += 2; 
-
-        table->setFixedHeight(height);
-    } else {
-        table->setFixedHeight(0);
-    }
+    // Allow scroll if needed but normally table should expand to fit
+    table->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 }
 
 QString OrderBook::formatNumber(double value, int decimals) {

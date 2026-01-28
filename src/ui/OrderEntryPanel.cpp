@@ -210,13 +210,13 @@ void OrderEntryPanel::setupUI() {
 
     mainLayout->addWidget(m_tpSlContainer);
 
-    // ========== SPACER ==========
-    mainLayout->addStretch();
-
     // ========== PLACE ORDER BUTTON ==========
     m_placeOrderBtn = new QPushButton("Place Order");
     m_placeOrderBtn->setFixedHeight(44);
     mainLayout->addWidget(m_placeOrderBtn);
+
+    // ========== SPACER (pushes footer to bottom) ==========
+    mainLayout->addStretch();
 
     // ========== FOOTER SUMMARY ==========
     mainLayout->addWidget(createInfoRow("Liquidation Price", &m_liqPriceValue));
