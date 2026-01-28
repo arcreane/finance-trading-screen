@@ -8,7 +8,7 @@ Application de simulation d'écran de trading financier développée avec **Qt6*
 
 - **Graphique de trading** : Visualisation des cours en temps réel avec chandeliers japonais (candlestick chart).
 - **Order Book** : Affichage du carnet d'ordres avec les niveaux d'achat (Bid) et de vente (Ask).
-- **Panneau d'entrée d'ordres** : Interface pour passer des ordres (Market, Limit, etc.).
+- **Panneau d'entrée d'ordres** : Interface pour passer  des ordres (Market, Limit, etc.).
 - **Ticker** : Affichage des informations clés sur l'actif sélectionné.
 - **Panneau inférieur** : Historique des ordres et positions.
 
