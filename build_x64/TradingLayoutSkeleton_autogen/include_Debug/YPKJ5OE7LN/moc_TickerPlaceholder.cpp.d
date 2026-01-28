@@ -1,4 +1,5 @@
 C:/Users/louka/Desktop/TradingSceen\ YOLIN/finance-trading-screen/build_x64/TradingLayoutSkeleton_autogen/include_Debug/YPKJ5OE7LN/moc_TickerPlaceholder.cpp: C:/Users/louka/Desktop/TradingSceen\ YOLIN/finance-trading-screen/src/ui/TickerPlaceholder.h \
+  C:/Qt/6.10.0/msvc2022_64/include/QtCore/QElapsedTimer \
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/q17memory.h \
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/q20functional.h \
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/q20iterator.h \
@@ -37,6 +38,7 @@ C:/Users/louka/Desktop/TradingSceen\ YOLIN/finance-trading-screen/build_x64/Trad
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/qdarwinhelpers.h \
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/qdatastream.h \
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/qdebug.h \
+  C:/Qt/6.10.0/msvc2022_64/include/QtCore/qelapsedtimer.h \
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/qendian.h \
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/qexceptionhandling.h \
   C:/Qt/6.10.0/msvc2022_64/include/QtCore/qflags.h \

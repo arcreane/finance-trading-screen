@@ -7,6 +7,7 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QPushButton>
+#include <QElapsedTimer>
 
 // Structure pour transporter les données d'une crypto
 struct TickerData {
@@ -59,6 +60,8 @@ private slots:
 private:
     // UI Elements interactifs (stockés pour pouvoir les modifier)
     QPushButton *symbolButton;
+    TickerSelector *tickerSelector = nullptr; // Pointeur vers le popup pour toggle
+    QElapsedTimer selectorCloseTimer; // Timer pour éviter réouverture immédiate
     QLabel *priceLabel;
     QLabel *changeLabel;
     QLabel *volumeLabel;

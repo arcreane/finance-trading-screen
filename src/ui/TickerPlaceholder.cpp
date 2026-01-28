@@ -145,23 +145,34 @@ void TickerPlaceholder::setupUI() {
     logo->setFixedSize(20, 20);
     logo->setStyleSheet("background-color: #7df2d5; border-radius: 10px; border: none;");
 
-    symbolButton = new QPushButton("BTC/USD");
+    symbolButton = new QPushButton("BTC/USD  ▼");
     symbolButton->setCursor(Qt::PointingHandCursor);
     symbolButton->setStyleSheet(
-        "QPushButton { color: white; font-size: 18px; font-weight: bold; border: none; background: transparent; text-align: left; }"
-        "QPushButton:hover { color: #cccccc; }"
+        "QPushButton {"
+        "    color: white;"
+        "    font-size: 16px;"
+        "    font-weight: bold;"
+        "    background-color: #232832;"
+        "    border: 1px solid #2a2e39;"
+        "    border-radius: 6px;"
+        "    padding: 6px 12px;"
+        "    text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #2a2e39;"
+        "    border-color: #3a3e49;"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #1e222a;"
+        "}"
     );
     connect(symbolButton, &QPushButton::clicked, this, &TickerPlaceholder::openTickerSelector);
-
-    QLabel *arrow = new QLabel("v");
-    arrow->setStyleSheet("color: #848e9c; font-weight: bold; padding-bottom: 3px; border: none;");
 
     QLabel *badge = new QLabel("Spot");
     badge->setStyleSheet("background-color: #1e3a3a; color: #3BB3A3; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; border: none;");
 
     leftLayout->addWidget(logo);
     leftLayout->addWidget(symbolButton);
-    leftLayout->addWidget(arrow);
     leftLayout->addWidget(badge);
 
     mainLayout->addWidget(leftContainer);
@@ -213,22 +224,40 @@ QWidget* TickerPlaceholder::createStatWidget(const QString &title, const QString
 }
 
 void TickerPlaceholder::openTickerSelector() {
-    TickerSelector *selector = new TickerSelector(this);
+    // Éviter la réouverture immédiate après fermeture (le popup se ferme quand on clique sur le bouton)
+    // Si le popup a été fermé il y a moins de 200ms, on ignore le clic
+    if (selectorCloseTimer.isValid() && selectorCloseTimer.elapsed() < 200) {
+        return;
+    }
+
+    // Toggle: si le sélecteur est déjà ouvert, on le ferme
+    if (tickerSelector != nullptr && tickerSelector->isVisible()) {
+        tickerSelector->close();
+        return;
+    }
+
+    // Créer un nouveau sélecteur
+    tickerSelector = new TickerSelector(this);
 
     // Positionner le popup
     QPoint p = symbolButton->mapToGlobal(QPoint(0, symbolButton->height() + 5));
-    selector->move(p);
+    tickerSelector->move(p);
 
     // CONNECTER LE SIGNAL DU POPUP AU SLOT DE LA BARRE
-    connect(selector, &TickerSelector::tickerSelected, this, &TickerPlaceholder::updateTickerDisplay);
+    connect(tickerSelector, &TickerSelector::tickerSelected, this, &TickerPlaceholder::updateTickerDisplay);
 
-    selector->exec();
-    delete selector;
+    tickerSelector->exec();
+    
+    // Démarrer le timer quand le popup se ferme
+    selectorCloseTimer.start();
+    
+    delete tickerSelector;
+    tickerSelector = nullptr;
 }
 
 void TickerPlaceholder::updateTickerDisplay(const TickerData &data) {
     // 1. Mettre à jour les textes
-    symbolButton->setText(data.symbol);
+    symbolButton->setText(data.symbol + "  ▼");
     priceLabel->setText(data.price);
     changeLabel->setText(data.change);
     volumeLabel->setText(data.volume);
