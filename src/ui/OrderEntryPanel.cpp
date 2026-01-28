@@ -22,8 +22,8 @@ OrderEntryPanel::OrderEntryPanel(QWidget *parent) : QWidget(parent) {
 
 void OrderEntryPanel::setupUI() {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(12, 12, 12, 12);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(16); // Increased spacing for clearer interface
 
     // ========== HEADER SECTION ==========
     // Row 1: Cross / Leverage buttons
@@ -215,9 +215,6 @@ void OrderEntryPanel::setupUI() {
     m_placeOrderBtn->setFixedHeight(44);
     mainLayout->addWidget(m_placeOrderBtn);
 
-    // ========== SPACER (pushes footer to bottom) ==========
-    mainLayout->addStretch();
-
     // ========== FOOTER SUMMARY ==========
     mainLayout->addWidget(createInfoRow("Liquidation Price", &m_liqPriceValue));
     m_liqPriceValue->setText("N/A");
@@ -228,6 +225,8 @@ void OrderEntryPanel::setupUI() {
     mainLayout->addWidget(createInfoRow("Margin Required", &m_marginValue));
     m_marginValue->setText("1.77 USDC");
 
+    // ========== SPACER (fills remaining space at bottom) ==========
+    mainLayout->addStretch();
 
 }
 
