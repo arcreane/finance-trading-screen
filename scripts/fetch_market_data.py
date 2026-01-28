@@ -35,7 +35,19 @@ def fetch_klines(symbol: str, interval: str, limit: int) -> list:
 
 
 def main():
-    conn = sqlite3.connect("backtest.db")
+    # Determine paths relative to script location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    
+    # Target: project_root/data/backtest.db
+    data_dir = os.path.join(project_root, "data")
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+        
+    db_path = os.path.join(data_dir, "backtest.db")
+    print(f"Database path: {db_path}")
+
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     # Ensure table exists
@@ -98,12 +110,16 @@ def main():
     conn.close()
 
     # Sync database to build directory if it exists
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    build_db = os.path.join(script_dir, "build", "backtest.db")
-    source_db = os.path.join(script_dir, "backtest.db")
-
-    if os.path.isdir(os.path.join(script_dir, "build")):
-        shutil.copy2(source_db, build_db)
+    # Target: project_root/build/data/backtest.db
+    build_dir = os.path.join(project_root, "build")
+    
+    if os.path.isdir(build_dir):
+        build_data_dir = os.path.join(build_dir, "data")
+        if not os.path.exists(build_data_dir):
+            os.makedirs(build_data_dir)
+            
+        build_db = os.path.join(build_data_dir, "backtest.db")
+        shutil.copy2(db_path, build_db)
         print(f"Synced database to {build_db}")
 
     print("\nDone!")
