@@ -2,27 +2,33 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
-#include <QFile>
 #include <QDebug>
-#include <fstream>
-#include <iostream>
+#include <QNetworkRequest>
+#include <QUrl>
+#include <QTableWidgetItem>
 #include <algorithm>
+#include <cmath>
+#include <map>
 
-using json = nlohmann::json;
-
-OrderBook::OrderBook(QWidget *parent) : QWidget(parent), currentFileIndex(0), m_currentSymbol("BTC") {
+OrderBook::OrderBook(QWidget *parent)
+    : QWidget(parent)
+    , m_currentSymbol("BTC")
+{
     setupUi();
-    
-    // Initialize simulation timer
-    simulationTimer = new QTimer(this);
-    connect(simulationTimer, &QTimer::timeout, this, &OrderBook::updateOrderBook);
-    simulationTimer->start(1000); // Update every 1 second
-    
-    // Initial load
-    updateOrderBook();
+
+    m_networkManager = new QNetworkAccessManager(this);
+    connect(m_networkManager, &QNetworkAccessManager::finished, this, &OrderBook::onHttpResponse);
+
+    m_pollTimer = new QTimer(this);
+    m_pollTimer->setInterval(1000);
+    connect(m_pollTimer, &QTimer::timeout, this, &OrderBook::fetchOrderBook);
+    m_pollTimer->start();
+
+    fetchOrderBook();
 }
 
 OrderBook::~OrderBook() {
+    m_pollTimer->stop();
 }
 
 void OrderBook::setupUi() {
@@ -30,12 +36,10 @@ void OrderBook::setupUi() {
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    // Asks Table (Top) - Expands to fill available space
     asksTable = new QTableWidget(this);
     asksTable->setColumnCount(3);
     asksTable->setHorizontalHeaderLabels({"Price", "Amount", "Total"});
-    
-    // Style the Native Header
+
     asksTable->horizontalHeader()->setVisible(true);
     asksTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     asksTable->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -44,28 +48,25 @@ void OrderBook::setupUi() {
     );
 
     asksTable->verticalHeader()->setVisible(false);
-    asksTable->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch); // Rows expand to fill
+    asksTable->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     asksTable->setShowGrid(false);
     asksTable->setSelectionMode(QAbstractItemView::NoSelection);
     asksTable->setFocusPolicy(Qt::NoFocus);
     asksTable->setStyleSheet("background-color: #161616; border: none;");
     asksTable->setItemDelegate(new DepthDelegate(asksTable));
     asksTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    mainLayout->addWidget(asksTable, 1); // Stretch factor 1
+    mainLayout->addWidget(asksTable, 1);
 
-
-    // Spread Label (Middle) - Fixed height
     spreadLabel = new QLabel(this);
     spreadLabel->setAlignment(Qt::AlignCenter);
     spreadLabel->setStyleSheet("color: #aaa; font-size: 10pt; padding: 5px; background-color: #202020; font-family: Consolas, monospace;");
-    mainLayout->addWidget(spreadLabel, 0); // No stretch
+    mainLayout->addWidget(spreadLabel, 0);
 
-    // Bids Table (Bottom) - Expands to fill available space
     bidsTable = new QTableWidget(this);
     bidsTable->setColumnCount(3);
     bidsTable->horizontalHeader()->setVisible(false);
     bidsTable->verticalHeader()->setVisible(false);
-    bidsTable->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch); // Rows expand to fill
+    bidsTable->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     bidsTable->setShowGrid(false);
     bidsTable->setSelectionMode(QAbstractItemView::NoSelection);
     bidsTable->setFocusPolicy(Qt::NoFocus);
@@ -73,184 +74,268 @@ void OrderBook::setupUi() {
     bidsTable->setItemDelegate(new DepthDelegate(bidsTable));
     bidsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     bidsTable->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    mainLayout->addWidget(bidsTable, 1); // Stretch factor 1
+    mainLayout->addWidget(bidsTable, 1);
 }
 
-void OrderBook::updateOrderBook() {
-    currentFileIndex = (currentFileIndex % 3) + 1;
-    std::string filename = QString("data/orderbook_%1_%2.json").arg(m_currentSymbol).arg(currentFileIndex).toStdString();
-    loadData(filename);
+QString OrderBook::buildRequestUrl() {
+    QString symbol = m_currentSymbol.toUpper() + "USDT";
+    return QString("https://api.binance.com/api/v3/depth?symbol=%1&limit=100").arg(symbol);
+}
+
+void OrderBook::fetchOrderBook() {
+    QString url = buildRequestUrl();
+    qDebug() << "Fetching orderbook:" << url;
+    QNetworkRequest request{QUrl(url)};
+    m_networkManager->get(request);
+}
+
+void OrderBook::onHttpResponse(QNetworkReply* reply) {
+    reply->deleteLater();
+
+    if (reply->error() != QNetworkReply::NoError) {
+        qDebug() << "HTTP error:" << reply->errorString();
+        return;
+    }
+
+    int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (statusCode != 200) {
+        qDebug() << "HTTP status:" << statusCode;
+        return;
+    }
+
+    QByteArray data = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (doc.isNull() || !doc.isObject()) return;
+
+    QJsonObject obj = doc.object();
+    if (!obj.contains("asks") || !obj["asks"].isArray() ||
+        !obj.contains("bids") || !obj["bids"].isArray()) {
+        return;
+    }
+
+    processDepthData(obj);
 }
 
 void OrderBook::setSymbol(const QString& symbol) {
     if (m_currentSymbol != symbol) {
         m_currentSymbol = symbol;
-        currentFileIndex = 0; // Reset to start fresh
-        updateOrderBook();
+        fetchOrderBook();
     }
 }
 
-void OrderBook::loadData(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        qDebug() << "Failed to open " << QString::fromStdString(filename);
-        return;
+void OrderBook::processDepthData(const QJsonObject& json) {
+    double maxTotal = 0;
+
+    // Parse raw ask levels
+    if (json.contains("asks") && json["asks"].isArray()) {
+        QJsonArray asksArray = json["asks"].toArray();
+        std::vector<Level> rawAsks;
+        rawAsks.reserve(asksArray.size());
+
+        for (const QJsonValue& val : asksArray) {
+            QJsonArray entry = val.toArray();
+            if (entry.size() >= 2) {
+                bool priceOk = false, qtyOk = false;
+                double price = entry[0].toString().toDouble(&priceOk);
+                double qty = entry[1].toString().toDouble(&qtyOk);
+                if (priceOk && qtyOk && price > 0 && qty >= 0) {
+                    rawAsks.push_back({price, qty});
+                }
+            }
+        }
+
+        std::vector<Level> grouped = aggregateLevels(rawAsks, false);
+
+        // Take top ORDERBOOK_DEPTH levels (lowest asks = best)
+        if ((int)grouped.size() > ORDERBOOK_DEPTH)
+            grouped.resize(ORDERBOOK_DEPTH);
+
+        // Reverse for display: highest price at top, best ask at bottom near spread
+        std::reverse(grouped.begin(), grouped.end());
+
+        populateTable(asksTable, grouped, false, maxTotal);
     }
 
-    try {
-        json j;
-        file >> j;
+    // Parse raw bid levels
+    if (json.contains("bids") && json["bids"].isArray()) {
+        QJsonArray bidsArray = json["bids"].toArray();
+        std::vector<Level> rawBids;
+        rawBids.reserve(bidsArray.size());
 
-        // Calculate Max Total for Depth Bars across both books (or per book? usually per side)
-        // Let's calculate max total per side to scale bars.
-        double maxTotal = 0; // Not used here, calculated in populate
-
-        // Populate Asks (Top)
-        // Asks should be sorted DESCENDING for display (Highest Price at Top, Lowest at Bottom near spread)
-        // Wait, standard vertical order book:
-        // Asks: High -> Low (Lowest near spread)
-        // Spread
-        // Bids: High -> Low (Highest near spread)
-        
-        // So Asks table: Row 0 is Highest Price. Last Row is Lowest Price (Best Ask).
-        // Bids table: Row 0 is Highest Price (Best Bid). Last Row is Lowest Price.
-        
-        if (j.contains("asks")) {
-            std::vector<json> asks = j["asks"].get<std::vector<json>>();
-            // Sort Asks Ascending (Lowest first) to find the best asks
-            std::sort(asks.begin(), asks.end(), [](const json& a, const json& b) {
-                return a["price"] < b["price"];
-            });
-            
-            // Keep only top 7 (configurable depth)
-            const size_t DEPTH = 7;
-            if (asks.size() > DEPTH) {
-                asks.resize(DEPTH);
+        for (const QJsonValue& val : bidsArray) {
+            QJsonArray entry = val.toArray();
+            if (entry.size() >= 2) {
+                bool priceOk = false, qtyOk = false;
+                double price = entry[0].toString().toDouble(&priceOk);
+                double qty = entry[1].toString().toDouble(&qtyOk);
+                if (priceOk && qtyOk && price > 0 && qty >= 0) {
+                    rawBids.push_back({price, qty});
+                }
             }
-            
-            // Sort Asks Descending (Highest first) for display (Vertical Layout: High -> Low)
-            std::sort(asks.begin(), asks.end(), [](const json& a, const json& b) {
-                return a["price"] > b["price"];
-            });
-            
-            populateTable(asksTable, asks, false, maxTotal);
-        }
-        
-        if (j.contains("bids")) {
-            std::vector<json> bids = j["bids"].get<std::vector<json>>();
-            // Sort Bids Descending (Highest first) - Best bids are highest
-            std::sort(bids.begin(), bids.end(), [](const json& a, const json& b) {
-                return a["price"] > b["price"];
-            });
-            
-            // Keep only top 7 (configurable depth)
-            const size_t DEPTH = 7;
-            if (bids.size() > DEPTH) {
-                bids.resize(DEPTH);
-            }
-            
-            populateTable(bidsTable, bids, true, maxTotal);
         }
 
-        // Calculate Spread
-        if (bidsTable->rowCount() > 0 && asksTable->rowCount() > 0) {
-            // Best Ask is the LAST row of Asks table
-            double bestAsk = asksTable->item(asksTable->rowCount() - 1, 0)->text().replace(" ", "").toDouble();
-            // Best Bid is the FIRST row of Bids table
-            double bestBid = bidsTable->item(0, 0)->text().replace(" ", "").toDouble();
-            
-            double spread = bestAsk - bestBid;
-            double percentage = (spread / bestAsk) * 100.0;
-            double fairPrice = (bestAsk + bestBid) / 2.0;
-            spreadLabel->setText(QString("%1  %2%       Fair %3")
-                                 .arg(formatNumber(spread, 1))
-                                 .arg(formatNumber(percentage, 3))
-                                 .arg(formatNumber(fairPrice, 1)));
-        }
+        std::vector<Level> grouped = aggregateLevels(rawBids, true);
 
-    } catch (const std::exception& e) {
-        qDebug() << "JSON Parse Error: " << e.what();
+        // Take top ORDERBOOK_DEPTH levels (highest bids = best)
+        if ((int)grouped.size() > ORDERBOOK_DEPTH)
+            grouped.resize(ORDERBOOK_DEPTH);
+
+        populateTable(bidsTable, grouped, true, maxTotal);
+    }
+
+    // Calculate spread from best ask and best bid
+    if (bidsTable->rowCount() > 0 && asksTable->rowCount() > 0) {
+        auto* askItem = asksTable->item(asksTable->rowCount() - 1, 0);
+        auto* bidItem = bidsTable->item(0, 0);
+        if (!askItem || !bidItem) return;
+
+        double bestAsk = askItem->text().replace(" ", "").toDouble();
+        double bestBid = bidItem->text().replace(" ", "").toDouble();
+
+        if (bestAsk <= 0) return;
+
+        double spread = bestAsk - bestBid;
+        double percentage = (spread / bestAsk) * 100.0;
+        double fairPrice = (bestAsk + bestBid) / 2.0;
+        spreadLabel->setText(QString("%1  %2%       Fair %3")
+                             .arg(formatNumber(spread, 1))
+                             .arg(formatNumber(percentage, 3))
+                             .arg(formatNumber(fairPrice, 1)));
     }
 }
 
-void OrderBook::populateTable(QTableWidget* table, const std::vector<nlohmann::json>& data, bool isBid, double& maxTotal) {
-    table->setRowCount(0); // Clear existing
-    
-    // Calculate Cumulative Totals first to find Max
-    std::vector<double> totals;
-    double currentTotal = 0;
-    
-    // For Asks (displayed High to Low), the cumulative sum usually starts from the Best Ask (Lowest Price).
-    // So if we iterate High to Low (0 to N), we are going away from spread?
-    // No, "Total" usually means "Sum of size from Best Price up to this level".
-    // Best Ask is Lowest Price. Best Bid is Highest Price.
-    
-    // If table is Asks (High -> Low):
-    // We need to sum from Bottom (Lowest Price) up to Top (Highest Price).
-    // So iterate backwards for Asks?
-    
-    // If table is Bids (High -> Low):
-    // Best Bid is Top (Highest Price).
-    // Sum starts from Top.
-    
-    totals.resize(data.size());
+std::vector<OrderBook::Level> OrderBook::aggregateLevels(const std::vector<Level>& raw, bool isBid) {
+    if (raw.empty()) return {};
+
+    // Compute price range
+    double minPrice = raw.front().price;
+    double maxPrice = raw.front().price;
+    for (const auto& lvl : raw) {
+        if (lvl.price < minPrice) minPrice = lvl.price;
+        if (lvl.price > maxPrice) maxPrice = lvl.price;
+    }
+
+    double range = maxPrice - minPrice;
+    if (range <= 0) {
+        // All prices identical — return single level with summed qty
+        double totalQty = 0;
+        for (const auto& lvl : raw) totalQty += lvl.qty;
+        return {{raw.front().price, totalQty}};
+    }
+
+    double step = computeNiceStep(range, ORDERBOOK_DEPTH);
+    if (step <= 0) step = range / ORDERBOOK_DEPTH;
+
+    // Group levels into buckets
+    // Bids: floor to step boundary (round down)
+    // Asks: ceil to step boundary (round up)
+    std::map<double, double> buckets;
+
+    for (const auto& lvl : raw) {
+        double bucket;
+        if (isBid) {
+            bucket = std::floor(lvl.price / step) * step;
+        } else {
+            bucket = std::ceil(lvl.price / step) * step;
+        }
+        buckets[bucket] += lvl.qty;
+    }
+
+    // Convert to vector and sort
+    std::vector<Level> result;
+    result.reserve(buckets.size());
+    for (const auto& [price, qty] : buckets) {
+        if (qty > 0) {
+            result.push_back({price, qty});
+        }
+    }
+
     if (isBid) {
-        // Bids: Sorted High to Low. Top is Best.
-        // Sum from 0 to N.
-        for (size_t i = 0; i < data.size(); ++i) {
-            currentTotal += (double)data[i]["quantity"];
+        // Bids: highest price first (best bid at top)
+        std::sort(result.begin(), result.end(), [](const Level& a, const Level& b) {
+            return a.price > b.price;
+        });
+    } else {
+        // Asks: lowest price first (best ask first)
+        std::sort(result.begin(), result.end(), [](const Level& a, const Level& b) {
+            return a.price < b.price;
+        });
+    }
+
+    return result;
+}
+
+double OrderBook::computeNiceStep(double range, int targetBuckets) {
+    if (targetBuckets <= 0) return range;
+
+    double rawStep = range / targetBuckets;
+
+    // Find the magnitude (power of 10)
+    double magnitude = std::pow(10.0, std::floor(std::log10(rawStep)));
+
+    double normalized = rawStep / magnitude;
+
+    // Round to nearest "nice" number: 1, 2, 5
+    double niceNorm;
+    if (normalized <= 1.5)
+        niceNorm = 1.0;
+    else if (normalized <= 3.5)
+        niceNorm = 2.0;
+    else if (normalized <= 7.5)
+        niceNorm = 5.0;
+    else
+        niceNorm = 10.0;
+
+    return niceNorm * magnitude;
+}
+
+void OrderBook::populateTable(QTableWidget* table, const std::vector<Level>& levels, bool isBid, double& maxTotal) {
+    table->setRowCount(0);
+
+    // Calculate cumulative totals
+    std::vector<double> totals(levels.size());
+    double currentTotal = 0;
+
+    if (isBid) {
+        // Bids: sorted High to Low, sum from top
+        for (size_t i = 0; i < levels.size(); ++i) {
+            currentTotal += levels[i].qty;
             totals[i] = currentTotal;
         }
     } else {
-        // Asks: Sorted High to Low. Bottom is Best.
-        // Sum from N-1 down to 0.
-        for (int i = data.size() - 1; i >= 0; --i) {
-            currentTotal += (double)data[i]["quantity"];
+        // Asks: sorted High to Low for display, sum from bottom (best ask)
+        for (int i = levels.size() - 1; i >= 0; --i) {
+            currentTotal += levels[i].qty;
             totals[i] = currentTotal;
         }
     }
-    
-    maxTotal = currentTotal; // Max cumulative total
 
-    int row = 0;
-    for (size_t i = 0; i < data.size(); ++i) {
+    maxTotal = currentTotal;
+
+    for (size_t i = 0; i < levels.size(); ++i) {
+        int row = table->rowCount();
         table->insertRow(row);
-        
-        double price = data[i]["price"];
-        double qty = data[i]["quantity"];
-        double total = totals[i];
-        
-        QTableWidgetItem* priceItem = new QTableWidgetItem(formatNumber(price, 0)); // BTC Price usually no decimals if > 1000? Or 1. Screenshot shows 92400.
-        QTableWidgetItem* qtyItem = new QTableWidgetItem(formatBTC(qty));
-        QTableWidgetItem* totalItem = new QTableWidgetItem(formatBTC(total));
-        
-        // Set UserData for Delegate
-        // We want depth bars on the Total column? Or all columns? Screenshot shows bars behind the text across the row?
-        // "two-column table-like view... showing price and quantity per level"
-        // Screenshot shows bars behind "Total" and "Size"?
-        // Let's apply data to all items so delegate can draw background on all.
-        
+
+        QTableWidgetItem* priceItem = new QTableWidgetItem(formatNumber(levels[i].price, 1));
+        QTableWidgetItem* qtyItem = new QTableWidgetItem(formatBTC(levels[i].qty));
+        QTableWidgetItem* totalItem = new QTableWidgetItem(formatBTC(totals[i]));
+
         for (auto* item : {priceItem, qtyItem, totalItem}) {
-            item->setData(Qt::UserRole, total); // Value for bar
-            item->setData(Qt::UserRole + 1, maxTotal); // Max for scaling
-            item->setData(Qt::UserRole + 2, isBid); // Side
+            item->setData(Qt::UserRole, totals[i]);
+            item->setData(Qt::UserRole + 1, maxTotal);
+            item->setData(Qt::UserRole + 2, isBid);
         }
 
         table->setItem(row, 0, priceItem);
         table->setItem(row, 1, qtyItem);
         table->setItem(row, 2, totalItem);
-        
-        row++;
     }
 
-    // Allow scroll if needed but normally table should expand to fit
     table->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 }
 
 QString OrderBook::formatNumber(double value, int decimals) {
-    // Add thousands separator?
     QString str = QString::number(value, 'f', decimals);
-    // Simple space separator for thousands
     int pos = str.indexOf('.');
     if (pos == -1) pos = str.length();
     while (pos > 3) {
@@ -261,5 +346,5 @@ QString OrderBook::formatNumber(double value, int decimals) {
 }
 
 QString OrderBook::formatBTC(double value) {
-    return QString::number(value, 'f', 4); // 4 decimals for BTC size
+    return QString::number(value, 'f', 4);
 }

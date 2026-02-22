@@ -82,8 +82,13 @@ void MainWindow::setupUi() {
   z2l->addWidget(chartWidget);
 
   // Connect ticker selection to chart update
-  connect(tickerWidget, &TickerPlaceholder::tickerChanged, chartWidget, [chartWidget](const QString &symbol) {
-      chartWidget->loadData(symbol, "Daily");
+  connect(tickerWidget, &TickerPlaceholder::tickerChanged, chartWidget, [chartWidget, tickerWidget](const QString &symbol) {
+      chartWidget->loadData(symbol, tickerWidget->currentInterval());
+  });
+
+  // Connect interval change to chart update
+  connect(tickerWidget, &TickerPlaceholder::intervalChanged, chartWidget, [chartWidget, tickerWidget](const QString &interval) {
+      chartWidget->loadData(tickerWidget->currentSymbol(), interval);
   });
 
   greenLayout->addWidget(zone2, 1); // Expands to fill remaining Green space
@@ -131,6 +136,21 @@ void MainWindow::setupUi() {
     z4l->setContentsMargins(0, 0, 0, 0);
     OrderEntryPanel* orderEntry = new OrderEntryPanel(zone4);
     z4l->addWidget(orderEntry);
+
+    // Connect ticker selection and prices
+    connect(tickerWidget, &TickerPlaceholder::tickerChanged, orderEntry, &OrderEntryPanel::setSymbol);
+    connect(tickerWidget, &TickerPlaceholder::priceUpdated, orderEntry, &OrderEntryPanel::setCurrentPrice);
+    connect(tickerWidget, &TickerPlaceholder::priceUpdated, bottomPanel, &TradingBottomPanel::updateMarkPrices);
+
+    // Connect place order to bottom panel open orders and positions
+    connect(orderEntry, &OrderEntryPanel::orderPlaced, bottomPanel, &TradingBottomPanel::addOpenOrder);
+    connect(orderEntry, &OrderEntryPanel::orderPlaced, bottomPanel, &TradingBottomPanel::addPosition);
+    
+    // Connect position closure to refund balance
+    connect(bottomPanel, &TradingBottomPanel::positionClosed, orderEntry, &OrderEntryPanel::refundBalance);
+
+    // Sync available balance with assets tab
+    connect(orderEntry, &OrderEntryPanel::balanceUpdated, bottomPanel, &TradingBottomPanel::updateWalletBalance);
 
   mainLayout->addWidget(zone4, 0);
 }

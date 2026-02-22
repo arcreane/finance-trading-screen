@@ -16,13 +16,25 @@ class OrderEntryPanel : public QWidget {
 public:
     explicit OrderEntryPanel(QWidget *parent = nullptr);
 
+signals:
+    void orderPlaced(const QString &symbol, const QString &type, const QString &side, const QString &price, const QString &amount);
+    void balanceUpdated(double balance);
+
+public slots:
+    void setSymbol(const QString &symbol);
+    void setCurrentPrice(double price);
+    void refundBalance(double refundAmount);
+
 private slots:
     void onMarketTabClicked();
     void onLimitTabClicked();
     void onBuyClicked();
     void onSellClicked();
+    void onPlaceOrderClicked();
     void onSliderValueChanged(int value);
     void onTpSlToggled(bool checked);
+    void onTpGainEdited(const QString &text);
+    void onSlLossEdited(const QString &text);
     void updateTheme();
 
 private:
@@ -31,10 +43,10 @@ private:
 
     OrderMode m_currentMode = Market;
     OrderSide m_currentSide = Buy;
+    QString m_symbol = "BTC";
+    double m_currentMarketPrice = 96000.0;
 
     // Header buttons
-    QPushButton *m_crossBtn;
-    QPushButton *m_isolatedBtn;
     QPushButton *m_marketTab;
     QPushButton *m_limitTab;
 
@@ -44,7 +56,6 @@ private:
 
     // Info labels
     QLabel *m_availableValue;
-    QLabel *m_positionValue;
 
     // Form inputs
     QWidget *m_priceContainer;
@@ -66,9 +77,6 @@ private:
 
     // Footer
     QPushButton *m_placeOrderBtn;
-    QLabel *m_liqPriceValue;
-    QLabel *m_orderValueValue;
-    QLabel *m_marginValue;
 
 
     void setupUI();

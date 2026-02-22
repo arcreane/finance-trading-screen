@@ -10,7 +10,22 @@ class TradingBottomPanel : public QTabWidget {
 public:
   explicit TradingBottomPanel(QWidget *parent = nullptr);
 
+signals:
+  void positionClosed(double refundAmount);
+  void unrealizedPnlUpdated(double pnl);
+
+public slots:
+  void addOpenOrder(const QString &symbol, const QString &type, const QString &side, const QString &price, const QString &amount);
+  void addPosition(const QString &symbol, const QString &type, const QString &side, const QString &price, const QString &amount);
+  void updateMarkPrices(double currentPrice);
+  void updateWalletBalance(double balance);
+
 private:
+  QTableWidget *m_positionsTable = nullptr;
+  QTableWidget *m_openOrdersTable = nullptr;
+  QTableWidget *m_assetsTable = nullptr;
+  QTableWidget *m_tradeHistoryTable = nullptr;
+
   void setupTabs();
   void setupStyle();
 
@@ -19,8 +34,6 @@ private:
   QWidget *createOpenOrdersTab();
   QWidget *createOrderHistoryTab();
   QWidget *createTradeHistoryTab();
-  QWidget *createTransactionHistoryTab();
-  QWidget *createDepositsWithdrawalsTab();
   QWidget *createAssetsTab();
 
   // Helper to setup a standard table

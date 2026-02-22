@@ -8,6 +8,14 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QElapsedTimer>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QTimer>
+#include <QComboBox>
+#include <QDateTime>
 
 // Structure pour transporter les données d'une crypto
 struct TickerData {
@@ -51,21 +59,35 @@ public:
 signals:
     // Signal emitted when user selects a different coin
     void tickerChanged(const QString &symbol);
+    void priceUpdated(double price);
+    void intervalChanged(const QString &interval);
+
+public:
+    QString currentSymbol() const { return m_currentSymbol; }
+    QString currentInterval() const;
 
 private slots:
     void openTickerSelector();
     // Slot pour recevoir les données et mettre à jour l'UI
     void updateTickerDisplay(const TickerData &data);
+    void fetchTickerData();
+    void onHttpResponse(QNetworkReply* reply);
 
 private:
     // UI Elements interactifs (stockés pour pouvoir les modifier)
     QPushButton *symbolButton;
     TickerSelector *tickerSelector = nullptr; // Pointeur vers le popup pour toggle
     QElapsedTimer selectorCloseTimer; // Timer pour éviter réouverture immédiate
+    QComboBox *intervalSelector;
+    QLabel *countdownLabel;
     QLabel *priceLabel;
     QLabel *changeLabel;
     QLabel *volumeLabel;
     QLabel *capLabel;
+
+    QNetworkAccessManager *m_networkManager;
+    QTimer *m_pollTimer;
+    QString m_currentSymbol;
 
     void setupUI();
 

@@ -12,6 +12,12 @@ ChartWidget::ChartWidget(QWidget *parent) : QWidget(parent) {
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
+  m_networkManager = new QNetworkAccessManager(this);
+
+  m_pollTimer = new QTimer(this);
+  connect(m_pollTimer, &QTimer::timeout, this, &ChartWidget::fetchLatestKline);
+  m_pollTimer->start(5000);
+
   setupChart();
   setupRsiChart();
 
@@ -25,7 +31,7 @@ ChartWidget::ChartWidget(QWidget *parent) : QWidget(parent) {
   rsiChartView->setMouseTracking(true);
 
   // Auto-load BTC data as requested
-  loadData("BTC", "Daily");
+  loadData("BTC", "1h");
 }
 
 ChartWidget::~ChartWidget() {}
@@ -135,132 +141,102 @@ void ChartWidget::setupChart() {
   chart->scene()->addItem(infoLabel);
 }
 
-bool ChartWidget::connectToDatabase() {
-  QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-  db.setDatabaseName("data/backtest.db");
+void ChartWidget::loadData(const QString &symbol, const QString &interval) {
+  m_currentSymbol = symbol;
+  m_currentInterval = interval;
 
-  if (!db.open()) {
-    qDebug() << "Error: connection with database failed";
-    return false;
-  }
-  return true;
+  // Convert interval mapping if necessary (e.g. "Daily" -> "1d", "1h" -> "1h")
+  QString binanceInterval = interval;
+  if (interval == "Daily") binanceInterval = "1d";
+
+  QString urlStr = QString("https://api.binance.com/api/v3/klines?symbol=%1USDT&interval=%2&limit=500")
+                       .arg(symbol.toUpper())
+                       .arg(binanceInterval);
+
+  qDebug() << "Fetching chart data:" << urlStr;
+
+  QNetworkRequest request{QUrl(urlStr)};
+  QNetworkReply *reply = m_networkManager->get(request);
+  connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+      this->onKlinesReceived(reply);
+  });
 }
 
-void ChartWidget::loadData(const QString &symbol, const QString &interval) {
-  if (!connectToDatabase()) {
-    return;
+void ChartWidget::onKlinesReceived(QNetworkReply* reply) {
+  reply->deleteLater();
+
+  if (reply->error() != QNetworkReply::NoError) {
+      qDebug() << "HTTP error fetching klines:" << reply->errorString();
+      return;
   }
 
-  QSqlQuery query;
-  // Select Volume as well
-  query.prepare("SELECT Timestamp, Open, High, Low, Close, Volume FROM StockData WHERE "
-                "Symbol = :symbol ORDER BY Timestamp");
-  query.bindValue(":symbol", symbol);
-
-  if (!query.exec()) {
-    qDebug() << "Query failed:" << query.lastError();
-    return;
+  int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+  if (statusCode != 200) {
+      qDebug() << "HTTP status fetching klines:" << statusCode;
+      return;
   }
+
+  QByteArray data = reply->readAll();
+  QJsonDocument doc = QJsonDocument::fromJson(data);
+  if (doc.isNull() || !doc.isArray()) {
+      qDebug() << "Invalid JSON array received for klines.";
+      return;
+  }
+
+  QJsonArray klinesArray = doc.array();
 
   series->clear();
   maSeries->clear();
-  // volumeSeries->clear(); // Removed
   
   qint64 minTimestamp = std::numeric_limits<qint64>::max();
   qint64 maxTimestamp = std::numeric_limits<qint64>::min();
   double minPrice = std::numeric_limits<double>::max();
   double maxPrice = std::numeric_limits<double>::min();
-  double maxVolume = 0;
 
   QList<double> closes; // For SMA calculation
 
-  while (query.next()) {
-    QString timestampStr = query.value(0).toString().trimmed();
-    
-    // Aggressive sanitization: corrupted data has extra lines/spaces
-    if (timestampStr.length() >= 19) {
-        timestampStr = timestampStr.left(19);
-    } else {
-        qDebug() << "Skipping invalid timestamp length:" << timestampStr.length();
-        continue; // Skip invalid rows
+  for (const QJsonValue& val : klinesArray) {
+    if (!val.isArray()) continue;
+    QJsonArray kline = val.toArray();
+    if (kline.size() < 6) continue;
+
+    qint64 ts = (qint64)kline[0].toDouble();
+    double open = kline[1].toString().toDouble();
+    double high = kline[2].toString().toDouble();
+    double low = kline[3].toString().toDouble();
+    double close = kline[4].toString().toDouble();
+    // double volume = kline[5].toString().toDouble();
+
+    // Candle
+    QCandlestickSet *set = new QCandlestickSet(open, high, low, close, ts);
+    series->append(set);
+
+    // SMA Calculation
+    closes.append(close);
+    if (closes.size() >= 20) {
+        double sum = 0;
+        for (int i = closes.size() - 20; i < closes.size(); ++i) sum += closes[i];
+        maSeries->append(ts, sum / 20.0);
     }
 
-    double open = query.value(1).toDouble();
-    double high = query.value(2).toDouble();
-    double low = query.value(3).toDouble();
-    double close = query.value(4).toDouble();
-    double volume = query.value(5).toDouble();
-
-    qDebug() << "Row: " << timestampStr << " O: " << open << " H: " << high;
-
-    QDateTime timestamp = QDateTime::fromString(timestampStr, "yyyy-MM-dd HH:mm:ss");
-    
-    // Fallback moved inside length check, though likely unnecessary if format is fixed
-    if (!timestamp.isValid()) timestamp = QDateTime::fromString(timestampStr, Qt::ISODate);
-
-    if (timestamp.isValid()) {
-      qint64 ts = timestamp.toMSecsSinceEpoch();
-      
-      // Candle
-      QCandlestickSet *set = new QCandlestickSet(open, high, low, close, ts);
-      series->append(set);
-
-      // Volume (disabled - causes Qt assertion errors with QDateTimeAxis)
-      // QBarSet *volSet = new QBarSet("Volume");
-      // volSet->append(volume);
-      // 
-      // // Color based on price action
-      // if (close >= open)
-      //     volSet->setColor(QColor("#089981")); // Green
-      // else
-      //     volSet->setColor(QColor("#f23645")); // Red
-      //     
-      // volSet->setBorderColor(Qt::transparent);
-      // volumeSeries->append(volSet);
-
-      if (volume > maxVolume) maxVolume = volume;
-      
-      // SMA Calculation
-      closes.append(close);
-      if (closes.size() >= 20) {
-          double sum = 0;
-          for (int i = closes.size() - 20; i < closes.size(); ++i) sum += closes[i];
-          maSeries->append(ts, sum / 20.0);
-      }
-
-      if (ts < minTimestamp) minTimestamp = ts;
-      if (ts > maxTimestamp) maxTimestamp = ts;
-      if (low < minPrice) minPrice = low;
-      if (high > maxPrice) maxPrice = high;
-    } else {
-         qDebug() << "Invalid timestamp object for string:" << timestampStr;
-    }
+    if (ts < minTimestamp) minTimestamp = ts;
+    if (ts > maxTimestamp) maxTimestamp = ts;
+    if (low < minPrice) minPrice = low;
+    if (high > maxPrice) maxPrice = high;
   }
-
-  qDebug() << "Finished Data Loop. Count:" << series->count();
-  qDebug() << "MinTS:" << minTimestamp << "MaxTS:" << maxTimestamp;
-  qDebug() << "MinPrice:" << minPrice << "MaxPrice:" << maxPrice;
-  qDebug() << "MaxVolume:" << maxVolume;
 
   if (series->count() > 0 && minTimestamp != std::numeric_limits<qint64>::max() && maxTimestamp != std::numeric_limits<qint64>::min()) {
     
     // Safety check for flat ranges
     if (minTimestamp >= maxTimestamp) {
-        qDebug() << "Adjusting flat Time range";
         maxTimestamp = minTimestamp + 86400000; // Adds 1 day
     }
     
     if (minPrice >= maxPrice) {
-        qDebug() << "Adjusting flat Price range";
         minPrice = minPrice * 0.95;
         maxPrice = (maxPrice == 0 ? 1 : maxPrice * 1.05);
     }
 
-    if (maxVolume <= 0) {
-        maxVolume = 100; // Default
-    }
-
-    qDebug() << "Setting AxisX Range...";
     axisX->setRange(QDateTime::fromMSecsSinceEpoch(minTimestamp),
                     QDateTime::fromMSecsSinceEpoch(maxTimestamp));
     
@@ -270,12 +246,6 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
                        
     // Calculate RSI
     QList<qint64> timestamps;
-    // We need to reconstruct the list of timestamps matching 'closes'
-    // Since we appended 'closes' in the loop, let's verify if we tracked timestamps properly.
-    // The current loop implementation pushes to 'closes' one by one.
-    // We should capture timestamps in a list parallel to 'closes'.
-    
-    // Let's iterate series->sets() to get consistent data for RSI
     QList<double> closePricesForRsi;
     QList<qint64> timestampsForRsi;
     
@@ -298,11 +268,58 @@ void ChartWidget::loadData(const QString &symbol, const QString &interval) {
     }
 
     axisY->setRange(minPrice * 0.99, maxPrice * 1.01);
-    
-    // Volume logic removed
-  } else {
-      qDebug() << "Skipping setRange due to no valid data.";
   }
+}
+
+void ChartWidget::fetchLatestKline() {
+  if (m_currentSymbol.isEmpty() || m_currentInterval.isEmpty()) return;
+  if (series->count() == 0) return; // Wait for full history to load
+
+  QString binanceInterval = m_currentInterval;
+  if (m_currentInterval == "Daily") binanceInterval = "1d";
+
+  // Limit 2 captures boundary crossing
+  QString urlStr = QString("https://api.binance.com/api/v3/klines?symbol=%1USDT&interval=%2&limit=2")
+                       .arg(m_currentSymbol.toUpper())
+                       .arg(binanceInterval);
+
+  QNetworkRequest request{QUrl(urlStr)};
+  QNetworkReply *reply = m_networkManager->get(request);
+
+  connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+      reply->deleteLater();
+      if (reply->error() != QNetworkReply::NoError) return;
+      
+      QByteArray data = reply->readAll();
+      QJsonDocument doc = QJsonDocument::fromJson(data);
+      if (!doc.isArray()) return;
+      
+      QJsonArray klinesArray = doc.array();
+      if (series->count() == 0) return;
+      
+      for (const QJsonValue& val : klinesArray) {
+          if (!val.isArray()) continue;
+          QJsonArray kline = val.toArray();
+          if (kline.size() < 6) continue;
+          
+          qint64 ts = (qint64)kline[0].toDouble();
+          double open = kline[1].toString().toDouble();
+          double high = kline[2].toString().toDouble();
+          double low = kline[3].toString().toDouble();
+          double close = kline[4].toString().toDouble();
+          
+          QCandlestickSet *lastSet = series->sets().last();
+          
+          if (lastSet->timestamp() == ts) {
+              lastSet->setHigh(high);
+              lastSet->setLow(low);
+              lastSet->setClose(close);
+          } else if (lastSet->timestamp() < ts) {
+              QCandlestickSet *newSet = new QCandlestickSet(open, high, low, close, ts);
+              series->append(newSet);
+          }
+      }
+  });
 }
 
 bool ChartWidget::eventFilter(QObject *watched, QEvent *event) {

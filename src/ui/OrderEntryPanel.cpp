@@ -26,29 +26,7 @@ void OrderEntryPanel::setupUI() {
     mainLayout->setSpacing(16); // Increased spacing for clearer interface
 
     // ========== HEADER SECTION ==========
-    // Row 1: Cross / Leverage buttons
-    QHBoxLayout *leverageRow = new QHBoxLayout();
-    leverageRow->setSpacing(8);
-
-    m_crossBtn = new QPushButton("Cross");
-    m_crossBtn->setCheckable(true);
-    m_crossBtn->setChecked(true);
-    m_crossBtn->setFixedHeight(32);
-
-    m_isolatedBtn = new QPushButton("Isolated");
-    m_isolatedBtn->setCheckable(true);
-    m_isolatedBtn->setFixedHeight(32);
-
-    QButtonGroup *marginGroup = new QButtonGroup(this);
-    marginGroup->addButton(m_crossBtn);
-    marginGroup->addButton(m_isolatedBtn);
-    marginGroup->setExclusive(true);
-
-    leverageRow->addWidget(m_crossBtn);
-    leverageRow->addWidget(m_isolatedBtn);
-    mainLayout->addLayout(leverageRow);
-
-    // Row 2: Market / Limit tabs
+    // Market / Limit tabs
     QHBoxLayout *tabRow = new QHBoxLayout();
     tabRow->setSpacing(10);
 
@@ -91,10 +69,14 @@ void OrderEntryPanel::setupUI() {
 
     // ========== INFO SECTION ==========
     mainLayout->addWidget(createInfoRow("Available to Trade", &m_availableValue));
-    m_availableValue->setText("16.15 USDC");
+    m_availableValue->setText("100.00 USDC");
+    
+    // Defer emitting until connected
+    QMetaObject::invokeMethod(this, [this]() {
+        emit balanceUpdated(100.0);
+    }, Qt::QueuedConnection);
 
-    mainLayout->addWidget(createInfoRow("Current Position", &m_positionValue));
-    m_positionValue->setText("0 GMT");
+
 
     // ========== PRICE INPUT (Limit mode only) ==========
     m_priceContainer = new QWidget();
@@ -133,7 +115,7 @@ void OrderEntryPanel::setupUI() {
     m_sizeInput->setAlignment(Qt::AlignRight);
 
     m_unitCombo = new QComboBox();
-    m_unitCombo->addItems({"GMT", "USDC"});
+    m_unitCombo->addItems({m_symbol, "USDC"});
     m_unitCombo->setFixedWidth(80);
 
     sizeLayout->addWidget(sizeLabel);
@@ -148,9 +130,11 @@ void OrderEntryPanel::setupUI() {
 
     m_sizeSlider = new QSlider(Qt::Horizontal);
     m_sizeSlider->setRange(0, 100);
-    m_sizeSlider->setValue(11);
+    m_sizeSlider->blockSignals(true);
+    m_sizeSlider->setValue(0);
+    m_sizeSlider->blockSignals(false);
 
-    m_sliderPercent = new QLabel("11 %");
+    m_sliderPercent = new QLabel("0 %");
     m_sliderPercent->setFixedWidth(50);
     m_sliderPercent->setAlignment(Qt::AlignCenter);
 
@@ -159,6 +143,29 @@ void OrderEntryPanel::setupUI() {
     sliderRow->addWidget(m_sizeSlider, 1);
     sliderRow->addWidget(m_sliderPercent);
     mainLayout->addLayout(sliderRow);
+
+    connect(m_sizeInput, &QLineEdit::textEdited, this, [this](const QString &text) {
+        QString availText = m_availableValue->text();
+        double avail = availText.split(" ").first().toDouble();
+        if (avail <= 0.0) return;
+
+        double enteredSize = text.toDouble();
+        if (m_unitCombo->currentText() != "USDC") {
+            double price = 0.0;
+            if (m_currentMode == Limit) {
+                price = m_priceInput->text().toDouble();
+            }
+            if (price <= 0.0) price = m_currentMarketPrice;
+            enteredSize *= price;
+        }
+
+        int percent = qBound(0, static_cast<int>((enteredSize / avail) * 100.0), 100);
+        
+        m_sizeSlider->blockSignals(true);
+        m_sizeSlider->setValue(percent);
+        m_sliderPercent->setText(QString("%1 %").arg(percent));
+        m_sizeSlider->blockSignals(false);
+    });
 
     // ========== TP/SL SECTION ==========
     m_tpSlCheck = new QCheckBox("Take Profit / Stop Loss");
@@ -178,6 +185,7 @@ void OrderEntryPanel::setupUI() {
     // Gain %
     m_tpGainInput = new QLineEdit();
     m_tpGainInput->setPlaceholderText("Gain");
+    connect(m_tpGainInput, &QLineEdit::textEdited, this, &OrderEntryPanel::onTpGainEdited);
 
     QLabel *gainSuffix = new QLabel("%");
     gainSuffix->setStyleSheet(QString("color: %1;").arg(COLOR_TEXT_DIM));
@@ -194,6 +202,7 @@ void OrderEntryPanel::setupUI() {
     // Loss %
     m_slLossInput = new QLineEdit();
     m_slLossInput->setPlaceholderText("Loss");
+    connect(m_slLossInput, &QLineEdit::textEdited, this, &OrderEntryPanel::onSlLossEdited);
 
     QLabel *lossSuffix = new QLabel("%");
     lossSuffix->setStyleSheet(QString("color: %1;").arg(COLOR_TEXT_DIM));
@@ -213,17 +222,12 @@ void OrderEntryPanel::setupUI() {
     // ========== PLACE ORDER BUTTON ==========
     m_placeOrderBtn = new QPushButton("Place Order");
     m_placeOrderBtn->setFixedHeight(44);
+    connect(m_placeOrderBtn, &QPushButton::clicked, this, &OrderEntryPanel::onPlaceOrderClicked);
     mainLayout->addWidget(m_placeOrderBtn);
 
     // ========== FOOTER SUMMARY ==========
-    mainLayout->addWidget(createInfoRow("Liquidation Price", &m_liqPriceValue));
-    m_liqPriceValue->setText("N/A");
 
-    mainLayout->addWidget(createInfoRow("Order Value", &m_orderValueValue));
-    m_orderValueValue->setText("5.31 USDC");
 
-    mainLayout->addWidget(createInfoRow("Margin Required", &m_marginValue));
-    m_marginValue->setText("1.77 USDC");
 
     // ========== SPACER (fills remaining space at bottom) ==========
     mainLayout->addStretch();
@@ -303,26 +307,140 @@ void OrderEntryPanel::onSellClicked() {
     updateTheme();
 }
 
+void OrderEntryPanel::onPlaceOrderClicked() {
+    double size = m_sizeInput->text().toDouble();
+    if (size <= 0.0) return;
+
+    QString typeStr = (m_currentMode == Market) ? "Market" : "Limit";
+    double price = 0.0;
+    QString priceStr = "Market";
+
+    if (m_currentMode == Limit) {
+        price = m_priceInput->text().toDouble();
+        if (price <= 0.0) return;
+        priceStr = QString::number(price, 'f', 2);
+    } else {
+        price = m_currentMarketPrice;
+        priceStr = QString::number(price, 'f', 2);
+    }
+
+    double costUsdc = 0.0;
+    QString amountStr;
+
+    if (m_unitCombo->currentText() == "USDC") {
+        costUsdc = size;
+        double tokenAmount = size / price;
+        amountStr = QString("%1 %2").arg(QString::number(tokenAmount, 'f', 5), m_symbol);
+    } else {
+        costUsdc = size * price;
+        amountStr = QString("%1 %2").arg(QString::number(size, 'f', 5), m_symbol);
+    }
+
+    QString availText = m_availableValue->text();
+    double avail = availText.split(" ").first().toDouble();
+
+    if (avail >= costUsdc) {
+        avail -= costUsdc;
+        m_availableValue->setText(QString("%1 USDC").arg(avail, 0, 'f', 2));
+        emit balanceUpdated(avail);
+
+        QString sideStr = (m_currentSide == Buy) ? "Buy" : "Sell";
+        emit orderPlaced(m_symbol, typeStr, sideStr, priceStr, amountStr);
+
+        m_sizeInput->clear();
+        m_sizeSlider->blockSignals(true);
+        m_sizeSlider->setValue(0);
+        m_sizeSlider->blockSignals(false);
+        m_sliderPercent->setText("0 %");
+    }
+}
+
 void OrderEntryPanel::onSliderValueChanged(int value) {
     m_sliderPercent->setText(QString("%1 %").arg(value));
+
+    QString availText = m_availableValue->text();
+    double avail = availText.split(" ").first().toDouble();
+    double sizeVal = avail * (value / 100.0);
+
+    if (m_unitCombo->currentText() != "USDC") {
+        double price = 0.0;
+        if (m_currentMode == Limit) {
+            price = m_priceInput->text().toDouble();
+        }
+        if (price <= 0.0) price = m_currentMarketPrice;
+        sizeVal = sizeVal / price;
+        m_sizeInput->setText(QString::number(sizeVal, 'f', 5));
+    } else {
+        m_sizeInput->setText(QString::number(sizeVal, 'f', 2));
+    }
 }
 
 void OrderEntryPanel::onTpSlToggled(bool checked) {
     m_tpSlContainer->setVisible(checked);
 }
 
+void OrderEntryPanel::onTpGainEdited(const QString &text) {
+    if (text.isEmpty()) {
+        m_tpPriceInput->clear();
+        return;
+    }
+    
+    double percent = text.toDouble();
+    if (percent == 0.0) return;
+    
+    double entryPrice = 0.0;
+    if (m_currentMode == Limit) {
+        entryPrice = m_priceInput->text().toDouble();
+    }
+    if (entryPrice <= 0.0) {
+        entryPrice = m_currentMarketPrice;
+    }
+    
+    double targetPrice = 0.0;
+    if (m_currentSide == Buy) {
+        targetPrice = entryPrice * (1.0 + (percent / 100.0));
+    } else {
+        targetPrice = entryPrice * (1.0 - (percent / 100.0));
+    }
+    
+    if (targetPrice > 0.0) {
+        m_tpPriceInput->setText(QString::number(targetPrice, 'f', 2));
+    }
+}
+
+void OrderEntryPanel::onSlLossEdited(const QString &text) {
+    if (text.isEmpty()) {
+        m_slPriceInput->clear();
+        return;
+    }
+    
+    double percent = text.toDouble();
+    if (percent == 0.0) return;
+    
+    double entryPrice = 0.0;
+    if (m_currentMode == Limit) {
+        entryPrice = m_priceInput->text().toDouble();
+    }
+    if (entryPrice <= 0.0) {
+        entryPrice = m_currentMarketPrice;
+    }
+    
+    double targetPrice = 0.0;
+    if (m_currentSide == Buy) {
+        targetPrice = entryPrice * (1.0 - (percent / 100.0));
+    } else {
+        targetPrice = entryPrice * (1.0 + (percent / 100.0));
+    }
+    
+    if (targetPrice > 0.0) {
+        m_slPriceInput->setText(QString::number(targetPrice, 'f', 2));
+    }
+}
+
 void OrderEntryPanel::updateTheme() {
     QString accentColor = (m_currentSide == Buy) ? COLOR_BUY : COLOR_SELL;
     QString inactiveBtn = QString("background-color: %1; color: %2; border: 1px solid %3; border-radius: 4px; font-weight: bold;")
                           .arg(COLOR_INPUT_BG, COLOR_TEXT_DIM, COLOR_BORDER);
-
-    // Header buttons
-    QString headerBtnStyle = QString(
-        "QPushButton { background-color: %1; color: %2; border: 1px solid %3; border-radius: 4px; font-weight: bold; }"
-        "QPushButton:checked { border-color: %4; color: %5; }"
-    ).arg(COLOR_INPUT_BG, COLOR_TEXT_DIM, COLOR_BORDER, accentColor, COLOR_TEXT);
-    m_crossBtn->setStyleSheet(headerBtnStyle);
-    m_isolatedBtn->setStyleSheet(headerBtnStyle);
 
     // Tab buttons
     QString tabStyle = QString(
@@ -334,10 +452,16 @@ void OrderEntryPanel::updateTheme() {
 
     // Buy/Sell buttons
     if (m_currentSide == Buy) {
-        m_buyBtn->setStyleSheet(QString("background-color: %1; color: %2; border: none; border-radius: 4px; font-weight: bold;").arg(COLOR_BUY, COLOR_TEXT));
+        m_buyBtn->setStyleSheet(QString(
+            "QPushButton { background-color: %1; color: %2; border: none; border-radius: 4px; font-weight: bold; }"
+            "QPushButton:pressed { background-color: #249494; /* Darker teal for pressed state */ }"
+        ).arg(COLOR_BUY, COLOR_TEXT));
         m_sellBtn->setStyleSheet(inactiveBtn);
     } else {
-        m_sellBtn->setStyleSheet(QString("background-color: %1; color: %2; border: none; border-radius: 4px; font-weight: bold;").arg(COLOR_SELL, COLOR_TEXT));
+        m_sellBtn->setStyleSheet(QString(
+            "QPushButton { background-color: %1; color: %2; border: none; border-radius: 4px; font-weight: bold; }"
+            "QPushButton:pressed { background-color: #b53b57; /* Darker red for pressed state */ }"
+        ).arg(COLOR_SELL, COLOR_TEXT));
         m_buyBtn->setStyleSheet(inactiveBtn);
     }
 
@@ -345,7 +469,8 @@ void OrderEntryPanel::updateTheme() {
     m_placeOrderBtn->setStyleSheet(QString(
         "QPushButton { background-color: %1; color: %2; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; }"
         "QPushButton:hover { opacity: 0.9; }"
-    ).arg(accentColor, COLOR_TEXT));
+        "QPushButton:pressed { background-color: %3; }"
+    ).arg(accentColor, COLOR_TEXT, (m_currentSide == Buy) ? "#249494" : "#b53b57"));
 
     // Slider
     QString sliderStyle = QString(
@@ -360,3 +485,26 @@ void OrderEntryPanel::updateTheme() {
         "background-color: %1; color: %2; border: 1px solid %3; border-radius: 4px; padding: 4px;"
     ).arg(COLOR_INPUT_BG, COLOR_TEXT, COLOR_BORDER));
 }
+
+void OrderEntryPanel::setSymbol(const QString &symbol) {
+    if (m_symbol == symbol) return;
+    m_symbol = symbol;
+    m_unitCombo->setItemText(0, m_symbol);
+}
+
+void OrderEntryPanel::setCurrentPrice(double price) {
+    m_currentMarketPrice = price;
+}
+
+void OrderEntryPanel::refundBalance(double refundAmount) {
+    if (refundAmount <= 0) return;
+    
+    QString availText = m_availableValue->text();
+    double avail = availText.split(" ").first().toDouble();
+    avail += refundAmount;
+    
+    m_availableValue->setText(QString("%1 USDC").arg(avail, 0, 'f', 2));
+    emit balanceUpdated(avail);
+}
+
+

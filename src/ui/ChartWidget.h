@@ -14,7 +14,12 @@
 
 #include <QWidget>
 #include <QtCharts>
-#include <QtSql>
+#include <QtSql> // Still here for now if needed elsewhere, but can be removed
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 /**
  * @class ChartWidget
@@ -39,7 +44,12 @@ protected:
   void leaveEvent(QEvent *event) override;
   void wheelEvent(QWheelEvent *event) override;
 
+private slots:
+  void onKlinesReceived(QNetworkReply* reply);
+  void fetchLatestKline();
+
 private:
+  QTimer *m_pollTimer;
   QChartView *chartView;
   QChart *chart;
   QCandlestickSeries *series;
@@ -63,6 +73,11 @@ private:
   bool m_isDragging = false;
   QPoint m_lastMousePos;
 
+  // Network and State
+  QNetworkAccessManager *m_networkManager;
+  QString m_currentSymbol;
+  QString m_currentInterval;
+
   // RSI Components
   QChartView *rsiChartView;
   QChart *rsiChart;
@@ -72,7 +87,6 @@ private:
 
   void setupChart();
   void setupRsiChart();
-  bool connectToDatabase();
   void updateCrosshair(const QPointF &point);
   void calculateRSI(const QList<double> &closePrices, const QList<qint64> &timestamps, int period = 14);
   

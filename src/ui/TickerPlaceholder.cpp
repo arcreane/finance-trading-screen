@@ -121,9 +121,19 @@ bool TickerSelector::event(QEvent *event) {
 // 2. Implémentation de la Barre Principale
 // ==========================================
 
-TickerPlaceholder::TickerPlaceholder(QWidget *parent) : QWidget(parent) {
+TickerPlaceholder::TickerPlaceholder(QWidget *parent) : QWidget(parent), m_currentSymbol("BTC") {
     setAttribute(Qt::WA_StyledBackground, true);
     setupUI();
+
+    m_networkManager = new QNetworkAccessManager(this);
+    connect(m_networkManager, &QNetworkAccessManager::finished, this, &TickerPlaceholder::onHttpResponse);
+
+    m_pollTimer = new QTimer(this);
+    m_pollTimer->setInterval(1000); // Rafraîchir toutes les secondes
+    connect(m_pollTimer, &QTimer::timeout, this, &TickerPlaceholder::fetchTickerData);
+    m_pollTimer->start();
+
+    fetchTickerData();
 }
 
 void TickerPlaceholder::setupUI() {
@@ -194,9 +204,37 @@ void TickerPlaceholder::setupUI() {
 
     mainLayout->addStretch();
 
-    QLabel *contract = new QLabel("Contract 0x0d01...11ec");
-    contract->setStyleSheet("color: #848e9c; font-size: 12px; border: none;");
-    mainLayout->addWidget(contract);
+    intervalSelector = new QComboBox(this);
+    // Options: "1min", "5min", "1h", "1j"
+    intervalSelector->addItem("1min", "1m");
+    intervalSelector->addItem("5min", "5m");
+    intervalSelector->addItem("1h", "1h");
+    intervalSelector->addItem("1j", "1d");
+    intervalSelector->setCurrentIndex(2); // Set default to "1h"
+    
+    intervalSelector->setStyleSheet(
+        "QComboBox { background-color: #232832; color: white; border: 1px solid #2a2e39; border-radius: 4px; padding: 2px 10px; font-weight: bold; font-size: 13px; }"
+        "QComboBox::drop-down { border: none; }"
+        "QComboBox QAbstractItemView { background-color: #1e222a; color: white; selection-background-color: #2a2e39; }"
+    );
+
+    connect(intervalSelector, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
+        QString interval = intervalSelector->itemData(index).toString();
+        emit intervalChanged(interval);
+    });
+
+    mainLayout->addWidget(intervalSelector);
+
+    countdownLabel = new QLabel("--:--", this);
+    countdownLabel->setStyleSheet("color: #848e9c; font-size: 13px; font-weight: bold; background: #1e222a; padding: 4px 8px; border-radius: 4px; border: 1px solid #2a2e39;");
+    mainLayout->addWidget(countdownLabel);
+}
+
+QString TickerPlaceholder::currentInterval() const {
+    if (intervalSelector) {
+        return intervalSelector->currentData().toString();
+    }
+    return "1h"; // Default
 }
 
 // Fonction helper modifiée pour stocker le pointeur du label créé
@@ -256,27 +294,127 @@ void TickerPlaceholder::openTickerSelector() {
 }
 
 void TickerPlaceholder::updateTickerDisplay(const TickerData &data) {
-    // 1. Mettre à jour les textes
+    // 1. Mettre à jour le bouton
     symbolButton->setText(data.symbol + "  ▼");
-    priceLabel->setText(data.price);
-    changeLabel->setText(data.change);
-    volumeLabel->setText(data.volume);
-    capLabel->setText(data.marketCap);
 
-    // 2. Mettre à jour les couleurs dynamiquement (Vert si positif, Rouge si négatif)
-    QString color = "#ffffff"; // Default white
-    if (data.change.contains("+")) {
-        color = "#0ecb81"; // Green
-    } else if (data.change.contains("-")) {
-        color = "#f6465d"; // Red
+    // 2. Extraire le symbole de base (ex: "BTC/USD" -> "BTC")
+    QString cleanSymbol = data.symbol.split("/").first();
+    m_currentSymbol = cleanSymbol;
+
+    // 3. Forcer une mise à jour immédiate
+    fetchTickerData();
+
+    // 4. Emettre le signal pour le chart et l'orderbook
+    emit tickerChanged(cleanSymbol);
+}
+
+void TickerPlaceholder::fetchTickerData() {
+    // On requête l'API Binance pour le ticker 24h
+    QString url = QString("https://api.binance.com/api/v3/ticker/24hr?symbol=%1USDT").arg(m_currentSymbol);
+    QNetworkRequest request{QUrl(url)};
+    m_networkManager->get(request);
+
+    // Update countdown
+    qint64 now = QDateTime::currentDateTimeUtc().toMSecsSinceEpoch();
+    qint64 duration = 0;
+    QString intv = currentInterval();
+    if (intv == "1m") duration = 60000;
+    else if (intv == "5m") duration = 300000;
+    else if (intv == "1h") duration = 3600000;
+    else if (intv == "1d") duration = 86400000;
+
+    if (duration > 0) {
+        qint64 next = ((now / duration) + 1) * duration;
+        qint64 diff = next - now; 
+        int seconds = (diff / 1000) % 60;
+        int minutes = (diff / (1000 * 60)) % 60;
+        int hours = (diff / (1000 * 60 * 60)) % 24;
+        
+        QString text;
+        if (intv == "1d") text = QString("%1:%2:%3").arg(hours, 2, 10, QChar('0')).arg(minutes, 2, 10, QChar('0')).arg(seconds, 2, 10, QChar('0'));
+        else text = QString("%1:%2").arg(minutes, 2, 10, QChar('0')).arg(seconds, 2, 10, QChar('0'));
+        
+        countdownLabel->setText(text);
+    }
+}
+
+void TickerPlaceholder::onHttpResponse(QNetworkReply* reply) {
+    reply->deleteLater();
+
+    if (reply->error() != QNetworkReply::NoError) {
+        return;
     }
 
-    // Appliquer le style au Prix et au Change
+    QByteArray data = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (doc.isNull() || !doc.isObject()) return;
+
+    QJsonObject obj = doc.object();
+
+    double lastPrice = obj["lastPrice"].toString().toDouble();
+    emit priceUpdated(lastPrice);
+    
+    double changeVal = obj["priceChange"].toString().toDouble();
+    double changePercent = obj["priceChangePercent"].toString().toDouble();
+    double quoteVolume = obj["quoteVolume"].toString().toDouble(); // Volume en USDT
+
+    // Formattage du prix
+    QString priceStr;
+    if (lastPrice >= 1000) {
+        priceStr = QString::number(lastPrice, 'f', 2);
+        // Ajout d'une virgule pour les milliers
+        int pos = priceStr.indexOf('.');
+        if (pos > 3) priceStr.insert(pos - 3, ',');
+    } else {
+        priceStr = QString::number(lastPrice, 'f', 4);
+    }
+
+    // Formattage du changement
+    QString sign = changeVal > 0 ? "+" : "";
+    QString changeStr = QString("%1%2 / %3%4%")
+                            .arg(sign).arg(QString::number(changeVal, 'f', 2))
+                            .arg(sign).arg(QString::number(changePercent, 'f', 2));
+
+    // Formattage du volume
+    QString volStr;
+    if (quoteVolume >= 1000000000) {
+        volStr = QString::number(quoteVolume / 1000000000, 'f', 2) + "B USD";
+    } else if (quoteVolume >= 1000000) {
+        volStr = QString::number(quoteVolume / 1000000, 'f', 2) + "M USD";
+    } else if (quoteVolume >= 1000) {
+        volStr = QString::number(quoteVolume / 1000, 'f', 2) + "K USD";
+    } else {
+        volStr = QString::number(quoteVolume, 'f', 2) + " USD";
+    }
+
+    // Simulation du Market Cap (Binance API 24hr ticker ne donne pas le circulating supply)
+    QString capStr;
+    if (m_currentSymbol == "BTC") {
+        capStr = QString::number((lastPrice * 19600000) / 1000000000, 'f', 2) + "B USD";
+    } else if (m_currentSymbol == "ETH") {
+        capStr = QString::number((lastPrice * 120000000) / 1000000000, 'f', 2) + "B USD";
+    } else {
+        // Fallback approximation
+        double fakeCap = quoteVolume * 15; 
+        if (fakeCap >= 1000000000) capStr = QString::number(fakeCap / 1000000000, 'f', 2) + "B USD";
+        else capStr = QString::number(fakeCap / 1000000, 'f', 2) + "M USD";
+    }
+
+    // Mises à jour des labels
+    priceLabel->setText(priceStr);
+    changeLabel->setText(changeStr);
+    volumeLabel->setText(volStr);
+    capLabel->setText(capStr);
+
+    // Mises à jour des couleurs
+    QString color = "#ffffff";
+    if (changePercent > 0) {
+        color = "#0ecb81";
+    } else if (changePercent < 0) {
+        color = "#f6465d";
+    }
+
     QString styleTemplate = "color: %1; font-size: 13px; font-weight: bold; border: none;";
     priceLabel->setStyleSheet(styleTemplate.arg(color));
     changeLabel->setStyleSheet(styleTemplate.arg(color));
-
-    // 3. Emit signal for chart update - extract base symbol (e.g., "BTC/USD" -> "BTC")
-    QString cleanSymbol = data.symbol.split("/").first();
-    emit tickerChanged(cleanSymbol);
 }
