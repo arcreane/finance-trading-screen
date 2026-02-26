@@ -1,141 +1,84 @@
 # Finance Trading Screen
 
-Application de simulation d'écran de trading financier développée avec **Qt6** et **C++**.
+Un Trading screen qui permet la simulation de trading en temps réel, développée en **C++17** et **Qt 6**. Ce projet offre une interface utilisateur moderne, réactive et calquée sur les standards de l'industrie (comme Binance ou TradingView), en intégrant des flux de données de marché en temps réel et un moteur de simulation de passage d'ordres.
 
 ---
 
-## Fonctionnalités
+## 🚀 Fonctionnalités Principales & Interconnexions
 
-- **Graphique de trading** : Visualisation des cours en temps réel avec chandeliers japonais (candlestick chart).
-- **Order Book** : Affichage du carnet d'ordres avec les niveaux d'achat (Bid) et de vente (Ask).
-- **Panneau d'entrée d'ordres** : Interface pour passer  des ordres (Market, Limit, etc.).
-- **Ticker** : Affichage des informations clés sur l'actif sélectionné.
-- **Panneau inférieur** : Historique des ordres et positions.
+L'application est conçue pour offrir une expérience de trading fluide et réaliste. Tous les composants sont **fortement interconnectés** :
 
----
-
-## Prérequis
-
-- **Qt 6.10+** (avec les composants : Core, Gui, Widgets, Charts, Sql)
-- **CMake 3.16+**
-- **Compilateur C++17** (MSVC 2022 recommandé sur Windows)
+- **Graphique Interactif (ChartWidget)** : Affichage dynamique des cours sous forme de chandeliers japonais (Candlesticks) avec gestion temporelle et indicateurs intégrés.
+- **Carnet d'Ordres (OrderBook)** : Visualisation bid/ask de la profondeur du marché en temps réel pour comprendre la liquidité.
+- **Ticker et Données de Marché (TickerPlaceholder)** : Bandeau supérieur affichant les statistiques clés sur 24 heures (Prix actuel, variation, volumes absolus).
+- **Passage d'Ordres & Suivi (OrderEntryPanel & TradingBottomPanel)** : Le moteur de simulation est pleinement interconnecté. **Lorsque vous placez un ordre** (Market, Limit) via le panneau latéral de passage d'ordres, cet ordre est instantanément traité et routé. L'impact est immédiatement visible dans le panneau inférieur (qui trace l'historique, les ordres ouverts et les positions actives). Tout réagit en temps réel, sans latence, grâce au système de signaux/slots de Qt.
 
 ---
 
-## Lancement du projet
+## 🏗️ Architecture du Projet
 
-### 1. Configurer le projet avec CMake
+Le code a été pensé selon des principes de séparation des préoccupations (Clean Architecture), distinguant nettement la logique applicative (Core) de l'interface utilisateur (UI).
 
-```bash
-mkdir build
-cd build
-cmake ..
-```
-
-> **Note** : Assurez-vous que le chemin vers Qt est correctement défini dans `CMakeLists.txt` (voir section ci-dessous).
-
-### 2. Compiler le projet
-
-```bash
-cmake --build .
-```
-
-### 3. Exécuter l'application
-
-```bash
-./TradingLayoutSkeleton
-```
-
-Sur Windows :
-```bash
-.\TradingLayoutSkeleton.exe
-```
-
----
-
-## Fichier CMakeLists.txt
-
-Voici le contenu du fichier `CMakeLists.txt` utilisé pour configurer le projet :
-
-```cmake
-cmake_minimum_required(VERSION 3.16)
-
-project(TradingLayoutSkeleton LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-
-# Set Qt path BEFORE find_package
-set(CMAKE_PREFIX_PATH "C:/Qt/6.10.0/msvc2022_64")
-
-# Find Qt6 packages
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Charts Sql)
-
-set(PROJECT_SOURCES
-        main.cpp
-        MainWindow.cpp
-        MainWindow.h
-        TickerPlaceholder.cpp
-        TickerPlaceholder.h
-        ChartWidget.cpp
-        ChartWidget.h
-        orderbook.cpp
-        orderbook.h
-        TradingBottomPanel.cpp
-        TradingBottomPanel.h
-        OrderEntryPanel.cpp
-        OrderEntryPanel.h
-)
-
-add_executable(TradingLayoutSkeleton ${PROJECT_SOURCES})
-
-target_link_libraries(TradingLayoutSkeleton PRIVATE Qt6::Widgets Qt6::Charts Qt6::Sql)
-```
-
-> **Important** : Modifiez la ligne `CMAKE_PREFIX_PATH` pour correspondre à votre installation de Qt si nécessaire.
-
----
-
-## Données locales
-
-⚠️ **N'oubliez pas les fichiers de données locaux !**
-
-L'application utilise des fichiers de données locaux pour fonctionner :
-
-- `backtest.db` : Base de données SQLite contenant les données historiques.
-- `orderbook_BTC_*.json` : Fichiers JSON contenant les données du carnet d'ordres.
-
-Ces fichiers doivent être présents à la racine du projet ou dans le répertoire d'exécution.
-
----
-
-## Structure du projet
-
-```
+```text
 finance-trading-screen/
-├── CMakeLists.txt              # Configuration CMake
-├── README.md                   # Documentation
-├── src/                        # Code source C++
-│   ├── main.cpp                # Point d'entrée
-│   ├── ui/                     # Widgets interface utilisateur
-│   │   ├── MainWindow.cpp/h    # Fenêtre principale
-│   │   ├── ChartWidget.cpp/h   # Widget graphique candlestick + RSI
-│   │   ├── OrderEntryPanel.cpp/h # Panneau d'entrée d'ordres
-│   │   ├── TickerPlaceholder.cpp/h # Sélecteur de ticker
-│   │   └── TradingBottomPanel.cpp/h # Panneau inférieur
-│   └── core/                   # Logique métier
-│       └── orderbook.cpp/h     # Gestion du carnet d'ordres
-├── data/                       # Fichiers de données
-│   ├── backtest.db             # Base SQLite (données historiques)
-│   └── orderbook_BTC_*.json    # Données order book
-├── scripts/                    # Scripts Python utilitaires
-│   ├── fetch_market_data.py    # Récupération données marché
-│   └── insert_btc_data.py      # Insertion données BTC
-├── nlohmann/                   # Bibliothèque JSON header-only
-└── build/                      # Dossier de build (généré)
+├── CMakeLists.txt              # Script de configuration et de build CMake
+├── README.md                   # Ce fichier de documentation
+├── build_x64/                  # Répertoire contenant les binaires compilés
+├── src/                        # Code source principal (C++)
+│   ├── main.cpp                # Point d'entrée de l'application
+│   ├── core/                   # Cœur logique, modèles de données et requêtes réseau
+│   │   └── orderbook.cpp/h     # Logique métier du carnet d'ordres, parsing JSON, appels API
+│   └── ui/                     # Interfaces et composants graphiques (Qt)
+│       ├── MainWindow.cpp/h    # Fenêtre principale, orchestration de la disposition
+│       ├── ChartWidget.cpp/h   # Widget de dessin du graphique (Chandeliers, Volumes, RSI...)
+│       ├── OrderEntryPanel.*   # Panneau latéral de passage et de réglage des ordres
+│       ├── TickerPlaceholder.* # Panneau d'informations et sélecteur de paires
+│       └── TradingBottomPanel.*# Panneau inférieur de suivi de portefeuilles/ordres
 ```
 
+---
+
+## 📡 Récupération des Données & Choix de l'API
+
+L'objectif initial du projet académique prévoyait une interconnexion entre les différents groupes d'étudiants (notamment avec le groupe "Data" en charge de fournir les flux financiers). Cependant, **après de multiples tentatives de synchronisation et face à la complexité de se mettre d'accord sur une interface commune fonctionnelle**, nous avons pris l'initiative d'assurer un projet 100% opérationnel et autonome. 
+
+C'est pourquoi l'application utilise actuellement **l'API REST publique de Binance** en temps réel. Cette alternative professionnelle, robuste et bien documentée nous a permis de développer et de valider toutes les fonctionnalités de notre Trading Screen.
+
+Cependant, le projet a été pensé autour d'une **architecture hautement modulaire** en prévision de l'intégration finale :
+- **Appels Réseau** : Le module `QtNetwork` est utilisé pour effectuer des requêtes asynchrones en arrière-plan afin de ne pas bloquer l'interface.
+- **Substitution d'API** : Le basculement vers l'API interne du groupe Data (ou tout autre exchange comme Kraken/Bybit) se résume à remplacer l'URL de base (`API_URL`) et à s'assurer de la correspondance des endpoints (ex: `/klines`, `/depth`). Tant que le format JSON retourné respecte la structure attendue, l'effort d'intégration est minime.
+- **Génération Dynamique** : Les requêtes sont construites dynamiquement selon la paire choisie (ex: `BTCUSDT`, `ETHUSDT`). Le parsing JSON, très flexible, permet aux widgets graphiques et au moteur de trading de rester interopérables et agnostiques par rapport à la source de données.
+
+---
+
+## 🛠️ Instructions de Lancement 
+
+Le projet a été configuré avec un fichier CMake rigoureux pour assurer une compilation "out-of-the-box".
+
+### Prérequis Systèmes
+- **C++17** (Compilateur MSVC 2022 recommandé sur MS Windows, GCC/Clang sur Linux/Mac)
+- **CMake** (version 3.16 minimum)
+- **Qt 6.10 ou supérieur** (Assurez-vous d'avoir coché les composants : `Core`, `Gui`, `Widgets`, `Charts`, `Sql`, `Network` lors de l'installation).
+
+### 🚀 Lancer le projet pas-à-pas
+
+1. **Ouvrir une invite de commande / terminal** dans le répertoire racine du projet.
+2. **Configurer le build CMake** (création de l'arborescence et liaison des bibliothèques) :
+   ```bash
+   cmake -B build_x64 -S .
+   ```
+   *(Note : le `CMakeLists.txt` recherchera automatiquement `Qt6` sur votre système via votre PATH ou la variable `CMAKE_PREFIX_PATH` configurée dans le fichier).*
+
+3. **Compiler les binaires** (mode Release recommandé pour des performances optimales avec les graphiques temporels) :
+   ```bash
+   cmake --build build_x64 --config Release
+   ```
+
+4. **Exécuter l'application** :
+   Une fois compilé, vous pouvez lancer l'application directement. Sous Windows :
+   ```bash
+   .\build_x64\Release\TradingLayoutSkeleton.exe
+   ```
+   *(Ou `.\build_x64\TradingLayoutSkeleton.exe` selon la structure de votre générateur).*
+
+L'interface se lancera instantanément, établira de façon asynchrone ses connexions aux différentes API pour charger la crypto-monnaie par défaut, et affichera les marchés en temps réel !
