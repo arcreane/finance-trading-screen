@@ -24,6 +24,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+build/
+out/
 
 # Qt specific
 *.pro.user
@@ -49,15 +51,12 @@ CMakeScripts/
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json
-build/
-out/
 
 # Executables
 *.exe
 *.out
 *.app
 *.bat
-
 
 # Object files
 *.o
@@ -88,101 +87,13 @@ Desktop.ini
 # Orderbook data
 orderbook_*.json
 
-*.bat
+# Makefiles
+Makefile
+Makefile.Debug
+Makefile.Release
+
+# Project files
 finance-trading-screen.pro
 
-Makefile
-Makefile.Debug
-Makefile.Release
-
-# Visual Studio files
-.vs/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-*.wsuo
-slnx.sqlite
-
-# Visual Studio Code files
-.vscode/
-
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
-
-# Qt specific
-*.pro.user
-*.pro.user.*
-moc_*.cpp
-moc_*.h
-qrc_*.cpp
-ui_*.h
-*.qm
-.qmake.stash
-
-# IntelliSense and code analysis cache
-CodeChunks.db*
-SemanticSymbols.db*
-*.VC.db
-*.VC.VC.opendb
-
-# CMake
-CMakeLists.txt.user
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-cmake_install.cmake
-install_manifest.txt
-compile_commands.json
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Object files
-*.o
-*.obj
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# OS specific
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Temporary files
-*.tmp
-*.temp
-*.log
-*.swp
-*~
-
-#makefiles
-Makefile
-Makefile.Debug
-Makefile.Release
-CMakeLists.txt
-
-#python files
+# Python scripts data
 verify_data.py
