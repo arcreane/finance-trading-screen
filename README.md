@@ -1,84 +1,84 @@
 # Finance Trading Screen
 
-Un Trading screen qui permet la simulation de trading en temps réel, développée en **C++17** et **Qt 6**. Ce projet offre une interface utilisateur moderne, réactive et calquée sur les standards de l'industrie (comme Binance ou TradingView), en intégrant des flux de données de marché en temps réel et un moteur de simulation de passage d'ordres.
+A trading screen that allows real-time trading simulation, developed in **C++17** and **Qt 6**. This project offers a modern, responsive user interface modeled on industry standards (such as Binance or TradingView), integrating real-time market data feeds and an order execution simulation engine.
 
 ---
 
-## 🚀 Fonctionnalités Principales & Interconnexions
+## 🚀 Main Features & Interconnections
 
-L'application est conçue pour offrir une expérience de trading fluide et réaliste. Tous les composants sont **fortement interconnectés** :
+The application is designed to offer a fluid and realistic trading experience. All components are **highly interconnected**:
 
-- **Graphique Interactif (ChartWidget)** : Affichage dynamique des cours sous forme de chandeliers japonais (Candlesticks) avec gestion temporelle et indicateurs intégrés.
-- **Carnet d'Ordres (OrderBook)** : Visualisation bid/ask de la profondeur du marché en temps réel pour comprendre la liquidité.
-- **Ticker et Données de Marché (TickerPlaceholder)** : Bandeau supérieur affichant les statistiques clés sur 24 heures (Prix actuel, variation, volumes absolus).
-- **Passage d'Ordres & Suivi (OrderEntryPanel & TradingBottomPanel)** : Le moteur de simulation est pleinement interconnecté. **Lorsque vous placez un ordre** (Market, Limit) via le panneau latéral de passage d'ordres, cet ordre est instantanément traité et routé. L'impact est immédiatement visible dans le panneau inférieur (qui trace l'historique, les ordres ouverts et les positions actives). Tout réagit en temps réel, sans latence, grâce au système de signaux/slots de Qt.
+- **Interactive Chart (ChartWidget)**: Dynamic display of prices in the form of Japanese candlesticks with temporal management and integrated indicators.
+- **Order Book (OrderBook)**: Real-time bid/ask visualization of market depth to understand liquidity.
+- **Ticker and Market Data (TickerPlaceholder)**: Top banner displaying key 24-hour statistics (Current price, change, absolute volumes).
+- **Order Entry & Tracking (OrderEntryPanel & TradingBottomPanel)**: The simulation engine is fully interconnected. **When you place an order** (Market, Limit) via the order entry side panel, this order is instantly processed and routed. The impact is immediately visible in the bottom panel (which tracks history, open orders, and active positions). Everything reacts in real-time, without latency, thanks to Qt's signal/slot system.
 
 ---
 
-## 🏗️ Architecture du Projet
+## 🏗️ Project Architecture
 
-Le code a été pensé selon des principes de séparation des préoccupations (Clean Architecture), distinguant nettement la logique applicative (Core) de l'interface utilisateur (UI).
+The code was designed according to the principles of separation of concerns (Clean Architecture), clearly distinguishing the application logic (Core) from the user interface (UI).
 
 ```text
 finance-trading-screen/
-├── CMakeLists.txt              # Script de configuration et de build CMake
-├── README.md                   # Ce fichier de documentation
-├── build_x64/                  # Répertoire contenant les binaires compilés
-├── src/                        # Code source principal (C++)
-│   ├── main.cpp                # Point d'entrée de l'application
-│   ├── core/                   # Cœur logique, modèles de données et requêtes réseau
-│   │   └── orderbook.cpp/h     # Logique métier du carnet d'ordres, parsing JSON, appels API
-│   └── ui/                     # Interfaces et composants graphiques (Qt)
-│       ├── MainWindow.cpp/h    # Fenêtre principale, orchestration de la disposition
-│       ├── ChartWidget.cpp/h   # Widget de dessin du graphique (Chandeliers, Volumes, RSI...)
-│       ├── OrderEntryPanel.*   # Panneau latéral de passage et de réglage des ordres
-│       ├── TickerPlaceholder.* # Panneau d'informations et sélecteur de paires
-│       └── TradingBottomPanel.*# Panneau inférieur de suivi de portefeuilles/ordres
+├── CMakeLists.txt              # CMake configuration and build script
+├── README.md                   # This documentation file
+├── build_x64/                  # Directory containing compiled binaries
+├── src/                        # Main source code (C++)
+│   ├── main.cpp                # Application entry point
+│   ├── core/                   # Core logic, data models, and network requests
+│   │   └── orderbook.cpp/h     # Order book business logic, JSON parsing, API calls
+│   └── ui/                     # Interfaces and graphical components (Qt)
+│       ├── MainWindow.cpp/h    # Main window, layout orchestration
+│       ├── ChartWidget.cpp/h   # Chart drawing widget (Candlesticks, Volumes, RSI...)
+│       ├── OrderEntryPanel.*   # Side panel for placing and adjusting orders
+│       ├── TickerPlaceholder.* # Information panel and pair selector
+│       └── TradingBottomPanel.*# Bottom panel for portfolio/order tracking
 ```
 
 ---
 
-## 📡 Récupération des Données & Choix de l'API
+## 📡 Data Retrieval & API Choice
 
-L'objectif initial du projet académique prévoyait une interconnexion entre les différents groupes d'étudiants (notamment avec le groupe "Data" en charge de fournir les flux financiers). Cependant, **après de multiples tentatives de synchronisation et face à la complexité de se mettre d'accord sur une interface commune fonctionnelle**, nous avons pris l'initiative d'assurer un projet 100% opérationnel et autonome. 
+The initial goal of the academic project planned for an interconnection between the different groups of students (notably with the "Data" group in charge of providing the financial feeds). However, **after multiple synchronization attempts and facing the complexity of agreeing on a functional common interface**, we took the initiative to ensure a 100% operational and autonomous project.
 
-C'est pourquoi l'application utilise actuellement **l'API REST publique de Binance** en temps réel. Cette alternative professionnelle, robuste et bien documentée nous a permis de développer et de valider toutes les fonctionnalités de notre Trading Screen.
+This is why the application currently uses the **public Binance REST API** in real-time. This professional, robust, and well-documented alternative allowed us to develop and validate all the features of our Trading Screen.
 
-Cependant, le projet a été pensé autour d'une **architecture hautement modulaire** en prévision de l'intégration finale :
-- **Appels Réseau** : Le module `QtNetwork` est utilisé pour effectuer des requêtes asynchrones en arrière-plan afin de ne pas bloquer l'interface.
-- **Substitution d'API** : Le basculement vers l'API interne du groupe Data (ou tout autre exchange comme Kraken/Bybit) se résume à remplacer l'URL de base (`API_URL`) et à s'assurer de la correspondance des endpoints (ex: `/klines`, `/depth`). Tant que le format JSON retourné respecte la structure attendue, l'effort d'intégration est minime.
-- **Génération Dynamique** : Les requêtes sont construites dynamiquement selon la paire choisie (ex: `BTCUSDT`, `ETHUSDT`). Le parsing JSON, très flexible, permet aux widgets graphiques et au moteur de trading de rester interopérables et agnostiques par rapport à la source de données.
+However, the project was designed around a **highly modular architecture** in anticipation of the final integration:
+- **Network Calls**: The `QtNetwork` module is used to perform asynchronous asynchronous requests in the background so as not to block the interface.
+- **API Substitution**: Switching to the Data group's internal API (or any other exchange like Kraken/Bybit) comes down to replacing the base URL (`API_URL`) and ensuring the endpoints match (e.g., `/klines`, `/depth`). As long as the returned JSON format respects the expected structure, the integration effort is minimal.
+- **Dynamic Generation**: Requests are built dynamically according to the chosen pair (e.g., `BTCUSDT`, `ETHUSDT`). The JSON parsing, which is very flexible, allows the graphical widgets and the trading engine to remain interoperable and agnostic to the data source.
 
 ---
 
-## 🛠️ Instructions de Lancement 
+## 🛠️ Launch Instructions
 
-Le projet a été configuré avec un fichier CMake rigoureux pour assurer une compilation "out-of-the-box".
+The project was configured with a rigorous CMake file to ensure an "out-of-the-box" compilation.
 
-### Prérequis Systèmes
-- **C++17** (Compilateur MSVC 2022 recommandé sur MS Windows, GCC/Clang sur Linux/Mac)
+### System Prerequisites
+- **C++17** (MSVC 2022 compiler recommended on MS Windows, GCC/Clang on Linux/Mac)
 - **CMake** (version 3.16 minimum)
-- **Qt 6.10 ou supérieur** (Assurez-vous d'avoir coché les composants : `Core`, `Gui`, `Widgets`, `Charts`, `Sql`, `Network` lors de l'installation).
+- **Qt 6.10 or higher** (Make sure you have checked the components: `Core`, `Gui`, `Widgets`, `Charts`, `Sql`, `Network` during installation).
 
-### 🚀 Lancer le projet pas-à-pas
+### 🚀 Launch the project step-by-step
 
-1. **Ouvrir une invite de commande / terminal** dans le répertoire racine du projet.
-2. **Configurer le build CMake** (création de l'arborescence et liaison des bibliothèques) :
+1. **Open a command prompt / terminal** in the project's root directory.
+2. **Configure the CMake build** (creation of the tree structure and library linking):
    ```bash
    cmake -B build_x64 -S .
    ```
-   *(Note : le `CMakeLists.txt` recherchera automatiquement `Qt6` sur votre système via votre PATH ou la variable `CMAKE_PREFIX_PATH` configurée dans le fichier).*
+   *(Note: `CMakeLists.txt` will automatically search for `Qt6` on your system via your PATH or the `CMAKE_PREFIX_PATH` variable configured in the file).*
 
-3. **Compiler les binaires** (mode Release recommandé pour des performances optimales avec les graphiques temporels) :
+3. **Compile the binaries** (Release mode recommended for optimal performance with temporal charts):
    ```bash
    cmake --build build_x64 --config Release
    ```
 
-4. **Exécuter l'application** :
-   Une fois compilé, vous pouvez lancer l'application directement. Sous Windows :
+4. **Run the application**:
+   Once compiled, you can run the application directly. On Windows:
    ```bash
    .\build_x64\Release\TradingLayoutSkeleton.exe
    ```
-   *(Ou `.\build_x64\TradingLayoutSkeleton.exe` selon la structure de votre générateur).*
+   *(Or `.\build_x64\TradingLayoutSkeleton.exe` depending on your generator's structure).*
 
-L'interface se lancera instantanément, établira de façon asynchrone ses connexions aux différentes API pour charger la crypto-monnaie par défaut, et affichera les marchés en temps réel !
+The interface will launch instantly, asynchronously establish its connections to the various APIs to load the default cryptocurrency, and display the markets in real-time!
